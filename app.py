@@ -1,12 +1,36 @@
 import streamlit as st
 import asyncio
 import pandas as pd
+import subprocess
+import sys
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 import datetime
 
-# Importar las funciones de scraping y análisis
-from modules.estudio_scraper import obtener_datos_completos_partido, format_ah_as_decimal_string_of
+# --- Función para asegurar que los navegadores de Playwright están instalados ---
+def ensure_playwright_browsers_installed():
+    """Verifica y ejecuta 'playwright install' si es necesario."""
+    # Usamos st.cache_resource para ejecutar esto solo una vez por sesión.
+    @st.cache_resource
+    def install_browsers():
+        st.info("Verificando instalación de navegadores para Playwright...")
+        try:
+            # Usamos sys.executable para asegurar que usamos el python correcto
+            subprocess.run([sys.executable, "-m", "playwright", "install"], check=True, capture_output=True)
+            st.success("✅ Navegadores de Playwright listos.")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            st.error(f"No se pudieron instalar los navegadores de Playwright: {e}")
+            st.error("La aplicación no puede continuar sin los navegadores. Por favor, revisa los logs.")
+            st.stop()
+            return False
+    install_browsers()
+
+# --- Ejecutar la instalación de navegadores al inicio de la app ---
+ensure_playwright_browsers_installed()
+
+# Importar las funciones de scraping y análisis (después de la instalación)
+from modules.estudio_scraper import obtener_datos_completos_partido
 
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
@@ -19,7 +43,7 @@ st.set_page_config(
 # --- Funciones de Scraping (Cacheadas para rendimiento) ---
 URL_NOWGOAL = "https://live20.nowgoal25.com/"
 
-def parse_main_page_matches(html_content, limit=20):
+def parse_main_page_matches(html_content, limit=50):
     soup = BeautifulSoup(html_content, 'html.parser')
     match_rows = soup.find_all('tr', id=lambda x: x and x.startswith('tr1_'))
     upcoming_matches = []
@@ -61,7 +85,7 @@ def parse_main_page_matches(html_content, limit=20):
     return upcoming_matches[:limit]
 
 @st.cache_data(ttl=600) # Cache por 10 minutos
-def get_main_page_matches_cached(limit=25):
+def get_main_page_matches_cached(limit=50):
     """Versión asíncrona envuelta para Streamlit con caché."""
     async def get_matches():
         async with async_playwright() as p:
@@ -82,33 +106,29 @@ def obtener_datos_completos_partido_cached(match_id):
     return obtener_datos_completos_partido(match_id)
 
 # --- Interfaz de Usuario ---
-
 st.title("⚽ Dashboard de Análisis de Partidos")
 
-# --- Barra Lateral de Navegación ---
 st.sidebar.title("Navegación")
 opcion = st.sidebar.radio(
     "Selecciona una vista:",
     ("Próximos Partidos", "Analizar Partido por ID")
 )
 
-# --- Lógica de las Vistas ---
-
 if opcion == "Próximos Partidos":
     st.header("📅 Próximos Partidos")
-    
-    with st.spinner("Buscando próximos partidos... Esto puede tardar un momento."):
-        try:
-            matches = get_main_page_matches_cached(limit=50)
-            if matches:
-                df = pd.DataFrame(matches)
-                st.dataframe(df, use_container_width=True, hide_index=True)
-                st.success(f"Se encontraron {len(matches)} partidos.")
-            else:
-                st.warning("No se encontraron próximos partidos en este momento.")
-        except Exception as e:
-            st.error(f"No se pudieron cargar los partidos: {e}")
-            st.info("Esto puede deberse a un problema con la web de origen o a un timeout. Inténtalo de nuevo más tarde.")
+    if st.button("Buscar Partidos"):
+        with st.spinner("Buscando próximos partidos... Esto puede tardar un momento."):
+            try:
+                matches = get_main_page_matches_cached(limit=50)
+                if matches:
+                    df = pd.DataFrame(matches)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.success(f"Se encontraron {len(matches)} partidos.")
+                else:
+                    st.warning("No se encontraron próximos partidos en este momento.")
+            except Exception as e:
+                st.error(f"No se pudieron cargar los partidos: {e}")
+                st.info("Esto puede deberse a un problema con la web de origen o a un timeout. Inténtalo de nuevo más tarde.")
 
 elif opcion == "Analizar Partido por ID":
     st.header("🔍 Analizar Partido por ID")
@@ -117,43 +137,23 @@ elif opcion == "Analizar Partido por ID":
     
     if st.button("Analizar Partido"):
         if match_id_input and match_id_input.isdigit():
-            with st.spinner(f"Analizando partido {match_id_input}... Este proceso es complejo y puede tardar varios segundos."):
-                try:
-                    datos_partido = obtener_datos_completos_partido_cached(match_id_input)
-                    
-                    if not datos_partido or "error" in datos_partido:
-                        st.error(f"Error al obtener datos para el partido {match_id_input}: {datos_partido.get('error', 'Error desconocido')}")
-                    else:
-                        st.success(f"Análisis completado para {datos_partido['home_name']} vs {datos_partido['away_name']}")
-                        
-                        # Mostrar el contenido HTML generado por los módulos de análisis
-                        # Usamos 'unsafe_allow_html=True' porque confiamos en el HTML que nosotros mismos generamos
-                        
-                        if "market_analysis_html" in datos_partido:
-                            st.markdown("### Análisis de Mercado vs. Histórico H2H")
-                            st.markdown(datos_partido["market_analysis_html"], unsafe_allow_html=True)
+            datos_partido = obtener_datos_completos_partido_cached(match_id_input)
+            
+            if not datos_partido or "error" in datos_partido:
+                st.error(f"Error al obtener datos para el partido {match_id_input}: {datos_partido.get('error', 'Error desconocido')}")
+            else:
+                st.header(f"Análisis para: {datos_partido['home_name']} vs {datos_partido['away_name']}")
+                
+                if "market_analysis_html" in datos_partido:
+                    st.markdown(datos_partido["market_analysis_html"], unsafe_allow_html=True)
 
-                        if "advanced_analysis_html" in datos_partido:
-                            st.markdown("### Nota del Analista: Comparativas Indirectas")
-                            st.markdown(datos_partido["advanced_analysis_html"], unsafe_allow_html=True)
-                        
-                        if "recent_performance_analysis_html" in datos_partido:
-                            st.markdown("### Análisis de Rendimiento Reciente vs. Histórico")
-                            st.markdown(datos_partido["recent_performance_analysis_html"], unsafe_allow_html=True)
-
-                        if "h2h_indirect_analysis_html" in datos_partido:
-                            st.markdown("### Análisis H2H Indirecto")
-                            st.markdown(datos_partido["h2h_indirect_analysis_html"], unsafe_allow_html=True)
-
-                        # Podrías añadir más secciones aquí para otros datos si lo deseas
-                        # Por ejemplo, mostrar las tablas de estadísticas de los partidos
-                        with st.expander("Ver datos crudos del análisis"):
-                            st.json(datos_partido)
-
-                except Exception as e:
-                    st.error(f"Ocurrió un error crítico durante el análisis: {e}")
+                if "recent_performance_analysis_html" in datos_partido:
+                    st.markdown(datos_partido["recent_performance_analysis_html"], unsafe_allow_html=True)
+                
+                with st.expander("Ver todos los datos extraídos (JSON)"):
+                    st.json(datos_partido)
         else:
             st.warning("Por favor, introduce un ID de partido numérico válido.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("Aplicación adaptada para Streamlit por Gemini.")
+st.sidebar.info("Aplicación refactorizada por Gemini para mayor estabilidad.")
