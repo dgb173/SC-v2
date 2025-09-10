@@ -1,10 +1,11 @@
+
 # modules/estudio_scraper.py
 import streamlit as st
 import time
 import re
 import math
 import pandas as pd
-import tempfile # <--- AÑADIDO PARA DIRECTORIOS TEMPORALES
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import requests
@@ -34,21 +35,23 @@ BASE_URL_OF = "https://live18.nowgoal25.com"
 SELENIUM_TIMEOUT_SECONDS_OF = 15
 PLACEHOLDER_NODATA = "*(No disponible)*"
 
-# --- FUNCIÓN DE CONFIGURACIÓN DEL DRIVER (MODIFICADA) ---
+# --- FUNCIÓN DE CONFIGURACIÓN DEL DRIVER (NUEVA ESTRATEGIA) ---
 def setup_selenium_driver_for_streamlit():
     """Configura y devuelve un driver de Selenium compatible con Streamlit Cloud."""
     options = ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument('--blink-settings=imagesEnabled=false')
-    options.add_argument("--disable-extensions") # Añadido para mayor estabilidad
-
-    # --- CAMBIO CLAVE: Usar un directorio de datos de usuario único y temporal ---
-    user_data_dir = tempfile.mkdtemp()
-    options.add_argument(f"--user-data-dir={user_data_dir}")
+    options.add_argument("--disable-extensions")
+    
+    # --- CAMBIOS CLAVE PARA ESTABILIDAD EN CONTENEDORES ---
+    options.add_argument("--disable-dev-shm-usage") # Supera problemas de memoria limitada.
+    options.add_argument("--disable-infobars")
+    options.add_argument("--disable-setuid-sandbox")
+    options.add_argument('--single-process') # Ejecuta Chrome como un solo proceso.
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    # No especificamos --user-data-dir para dejar que Chrome maneje su perfil efímero.
     
     return webdriver.Chrome(options=options)
 
