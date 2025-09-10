@@ -1,0 +1,182 @@
+¡Hola! Entiendo perfectamente tu necesidad. Un script de scraping que tarda demasiado en ejecutarse puede ser un gran cuello de botella. Analizando el código que has proporcionado, la razón principal de la lentitud es, sin duda, el uso intensivo y secuencial de Selenium.
+
+Tu objetivo de 10-12 segundos es ambicioso pero alcanzable si se realizan optimizaciones clave. A continuación, te explico por qué es lento y cómo puedes solucionarlo.
+
+Análisis del Problema: ¿Por qué es lento el código?
+
+Selenium es inherentemente lento: Selenium inicia una instancia completa de un navegador web (Chrome, en este caso). Carga no solo el HTML, sino también CSS, ejecuta JavaScript, renderiza la página y espera a que los eventos se completen. Este proceso, por sí solo, puede tardar varios segundos.
+
+Múltiples cargas y esperas de página: El punto más crítico en tu código es que, además de la carga inicial, la función get_h2h_details_for_original_logic_of realiza su propio driver.get(url). Esto significa que tu script está cargando y renderizando una página completa dos veces, duplicando el tiempo de espera más costoso.
+
+Interacciones secuenciales y bloqueantes: En la función principal, tienes este bucle:
+
+code
+Python
+download
+content_copy
+expand_less
+
+for select_id in ["hSelect_1", "hSelect_2", "hSelect_3"]:
+    try:
+        Select(...).select_by_value("8")
+        time.sleep(0.2)
+    except TimeoutException:
+        continue
+
+Cada vez que cambias el valor de un <select>, el sitio web probablemente realiza una petición AJAX en segundo plano para actualizar la tabla. Tu código espera hasta 3 segundos por cada uno de estos elementos (WebDriverWait(3)) y luego hace una pausa. En el peor de los casos, solo esta parte podría sumar más de 9 segundos.
+
+Uso de time.sleep(): Aunque pequeños (0.2s y 0.5s), los time.sleep() son pausas "ciegas" que suman tiempo de ejecución innecesario. Es siempre preferible usar esperas explícitas (WebDriverWait) que solo esperan el tiempo necesario.
+
+Estrategias de Optimización para Reducir el Tiempo a < 12 segundos
+
+La estrategia principal es minimizar las interacciones con el navegador y hacer todo el trabajo posible con el HTML ya cargado.
+
+Estrategia 1: (La más efectiva) Cargar y procesar la página UNA SOLA VEZ
+
+En lugar de navegar a una nueva URL para obtener los datos de H2H Col3, podemos obtener todo el HTML después de las interacciones iniciales y pasarlo a todas las funciones. Esto elimina la segunda carga de página, que es el mayor cuello de botella.
+
+Pasos a seguir:
+
+Centraliza la carga y la interacción: En obtener_datos_completos_partido, carga la página, interactúa con los menús desplegables y obtén el page_source una única vez.
+
+Modifica las funciones para que acepten soup: Adapta las funciones como get_h2h_details_for_original_logic_of para que, en lugar de recibir el objeto driver y navegar, reciban el objeto BeautifulSoup ya procesado.
+
+Elimina time.sleep(): Confía en WebDriverWait para gestionar las esperas.
+
+Aquí te muestro cómo quedaría una versión refactorizada de tu función principal y la función modificada.
+
+Código Refactorizado (Conceptual)
+
+Esta es una reescritura de tu función obtener_datos_completos_partido aplicando las optimizaciones.
+
+code
+Python
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# En modules/estudio_scraper.py
+
+# ... (todas las demás funciones permanecen igual, excepto la que vamos a modificar) ...
+
+# MODIFICACIÓN 1: get_h2h_details_for_original_logic_of ahora recibe SOUP, no DRIVER.
+def get_h2h_details_for_original_logic_of(soup, key_match_id, rival_a_id, rival_b_id, rival_a_name="Rival A", rival_b_name="Rival B"):
+    # Se elimina la necesidad de driver.get() y WebDriverWait
+    if not all([soup, key_match_id, rival_a_id, rival_b_id]):
+        return {"status": "error", "resultado": "N/A (Datos incompletos para H2H)"}
+    
+    # La lógica de búsqueda es la misma, pero sobre el 'soup' que ya tenemos.
+    if not (table := soup.find("table", id="table_v2")):
+        return {"status": "error", "resultado": "N/A (Tabla H2H Col3 no encontrada)"}
+    
+    # ... el resto de la lógica de la función para buscar en la tabla es EXACTAMENTE IGUAL ...
+    for row in table.find_all("tr", id=re.compile(r"tr2_\d+")):
+        links = row.find_all("a", onclick=True)
+        if len(links) < 2: continue
+        h_id_m = re.search(r"team\((\d+)\)", links[0].get("onclick", "")); a_id_m = re.search(r"team\((\d+)\)", links[1].get("onclick", ""))
+        if not (h_id_m and a_id_m): continue
+        h_id, a_id = h_id_m.group(1), a_id_m.group(1)
+        if {h_id, a_id} == {str(rival_a_id), str(rival_b_id)}:
+            if not (score_span := row.find("span", class_="fscore_2")) or "-" not in score_span.text: continue
+            score = score_span.text.strip().split("(")[0].strip()
+            g_h, g_a = score.split("-", 1)
+            tds = row.find_all("td")
+            handicap_raw = "N/A"
+            if len(tds) > 11:
+                cell = tds[11]
+                handicap_raw = (cell.get("data-o") or cell.text).strip() or "N/A"
+            return {
+                "status": "found", "goles_home": g_h.strip(), "goles_away": g_a.strip(),
+                "handicap": handicap_raw, "match_id": row.get('index'),
+                "h2h_home_team_name": links[0].text.strip(), "h2h_away_team_name": links[1].text.strip()
+            }
+    return {"status": "not_found", "resultado": f"H2H directo no encontrado para {rival_a_name} vs {rival_b_name}."}
+
+
+# MODIFICACIÓN 2: La función principal ahora es mucho más eficiente.
+def obtener_datos_completos_partido(match_id: str):
+    if not match_id or not match_id.isdigit():
+        return {"error": "ID de partido inválido."}
+
+    options = ChromeOptions()
+    options.add_argument("--headless")
+    # ... (resto de opciones) ...
+    driver = webdriver.Chrome(options=options)
+    
+    main_page_url = f"{BASE_URL_OF}/match/h2h-{match_id}"
+    datos = {"match_id": match_id}
+
+    try:
+        # --- PASO 1: Carga y manipulación del navegador UNA SOLA VEZ ---
+        driver.get(main_page_url)
+        # Espera a que el contenedor de las tablas esté presente
+        wait = WebDriverWait(driver, 10) # Reducimos el timeout si confiamos en la velocidad
+        wait.until(EC.presence_of_element_located((By.ID, "porletP_3")))
+        
+        # Interactuamos con los selects de forma más robusta
+        for select_id in ["hSelect_1", "hSelect_2", "hSelect_3"]:
+            try:
+                select_element = wait.until(EC.presence_of_element_located((By.ID, select_id)))
+                Select(select_element).select_by_value("8")
+                # Esperamos a que la tabla se refresque (un indicador puede ser un spinner desapareciendo o un elemento cambiando)
+                # Si no hay un indicador claro, una pequeña espera explícita aquí es el único lugar donde podría ser necesaria.
+                # Pero intentemos sin el time.sleep() primero.
+            except TimeoutException:
+                print(f"Advertencia: No se encontró el select con ID {select_id}.")
+                continue
+        
+        # --- PASO 2: Extraemos el HTML final y cerramos el navegador lo antes posible ---
+        soup_completo = BeautifulSoup(driver.page_source, "lxml")
+        driver.quit() # ¡Cerramos el driver! Ya no lo necesitamos.
+
+        # --- PASO 3: Todas las operaciones ahora usan 'soup_completo' o 'requests' ---
+        
+        # Extracción de Datos Primarios (rápido)
+        home_id, away_id, league_id, home_name, away_name, league_name = get_team_league_info_from_script_of(soup_completo)
+        datos.update({"home_name": home_name, "away_name": away_name, "league_name": league_name})
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            # Tareas que solo parsean el soup (muy rápidas)
+            future_home_standings = executor.submit(extract_standings_data_from_h2h_page_of, soup_completo, home_name)
+            # ... (el resto de funciones que solo reciben soup_completo) ...
+            future_main_odds = executor.submit(extract_bet365_initial_odds_of, soup_completo)
+            future_h2h_data = executor.submit(extract_h2h_data_of, soup_completo, home_name, away_name, None)
+            future_last_home = executor.submit(extract_last_match_in_league_of, soup_completo, "table_v1", home_name, league_id, True)
+            future_last_away = executor.submit(extract_last_match_in_league_of, soup_completo, "table_v2", away_name, league_id, False)
+
+            # La función de H2H Col3 ahora también es solo parsing
+            key_id_a, rival_a_id, rival_a_name = get_rival_a_for_original_h2h_of(soup_completo, league_id)
+            _, rival_b_id, rival_b_name = get_rival_b_for_original_h2h_of(soup_completo, league_id)
+            future_h2h_col3 = executor.submit(get_h2h_details_for_original_logic_of, soup_completo, key_id_a, rival_a_id, rival_b_id, rival_a_name, rival_b_name) # Pasamos SOUP
+
+            # Obtener resultados (igual que antes)
+            # ...
+
+            # Tareas de red (usando requests, que es rápido y seguro en hilos)
+            # ... (esta parte ya estaba bien diseñada) ...
+            stats_futures = {key: executor.submit(get_match_progression_stats_data, match_id)
+                             for key, match_id in match_ids_to_fetch_stats.items() if match_id}
+            
+            # ... (resto de la lógica) ...
+            
+        return datos
+
+    except Exception as e:
+        print(f"ERROR CRÍTICO en el scraper: {e}")
+        return {"error": f"Error durante el scraping: {e}"}
+    finally:
+        # Asegurarnos de que el driver se cierra incluso si hay un error
+        if 'driver' in locals() and driver.service.is_running():
+            driver.quit()
+Resumen de los Cambios Clave y Beneficios
+
+Una Sola Carga de Página: Se elimina la segunda llamada a driver.get(). Este es el cambio que te dará el mayor ahorro de tiempo, probablemente de 5 a 10 segundos por sí solo.
+
+Cierre Temprano del Driver: El navegador se cierra (driver.quit()) tan pronto como obtenemos el HTML. Esto libera recursos del sistema inmediatamente. El resto del trabajo (procesamiento y peticiones requests) es mucho más ligero.
+
+Funciones Puras: Al modificar get_h2h_details_for_original_logic_of para que acepte soup, la convertimos en una función de "procesamiento puro" sin efectos secundarios (como la navegación web), lo que la hace más rápida y predecible.
+
+Paralelismo Real: Ahora, todas las tareas que no dependen de la red y que se ejecutan en el ThreadPoolExecutor son realmente rápidas (parsing de HTML en memoria), y no hay riesgo de conflictos al no compartir el objeto driver entre hilos.
+
+Implementando esta reestructuración, tu script debería experimentar una mejora drástica en el rendimiento y acercarse mucho más a tu objetivo de 10-12 segundos.

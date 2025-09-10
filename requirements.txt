@@ -1,0 +1,9 @@
+
+flask
+streamlit
+playwright
+selenium
+pandas
+beautifulsoup4
+requests
+lxml
