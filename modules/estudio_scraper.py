@@ -1,18 +1,16 @@
-
 # modules/estudio_scraper.py
 import streamlit as st
 import time
 import re
 import math
 import pandas as pd
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Selenium imports for Streamlit Cloud
+# Selenium imports
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
@@ -32,44 +30,50 @@ from modules.analisis_rendimiento import generar_analisis_rendimiento_reciente, 
 from modules.utils import parse_ah_to_number_of, format_ah_as_decimal_string_of, check_handicap_cover, check_goal_line_cover, get_match_details_from_row_of
 
 BASE_URL_OF = "https://live18.nowgoal25.com"
-SELENIUM_TIMEOUT_SECONDS_OF = 15
-PLACEHOLDER_NODATA = "*(No disponible)*"
+SELENIUM_TIMEOUT_SECONDS_OF = 20 # Aumentado ligeramente
 
-# --- FUNCIÓN DE CONFIGURACIÓN DEL DRIVER (NUEVA ESTRATEGIA) ---
-def setup_selenium_driver_for_streamlit():
-    """Configura y devuelve un driver de Selenium compatible con Streamlit Cloud."""
+# --- NUEVO GESTOR DE DRIVER CON CACHÉ DE RECURSOS ---
+@st.cache_resource(ttl=3600) # Cachear el driver por 1 hora
+def get_selenium_driver():
+    """
+    Crea, gestiona y cachea una única instancia del driver de Selenium.
+    Streamlit se encarga de cerrarlo automáticamente cuando la sesión termina.
+    """
+    st.info("⚙️ Creando una nueva instancia del navegador virtual (esto ocurre solo una vez por sesión)...")
     options = ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-extensions")
-    
-    # --- CAMBIOS CLAVE PARA ESTABILIDAD EN CONTENEDORES ---
-    options.add_argument("--disable-dev-shm-usage") # Supera problemas de memoria limitada.
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-infobars")
     options.add_argument("--disable-setuid-sandbox")
-    options.add_argument('--single-process') # Ejecuta Chrome como un solo proceso.
+    options.add_argument('--single-process')
     options.add_argument("--disable-blink-features=AutomationControlled")
-    # No especificamos --user-data-dir para dejar que Chrome maneje su perfil efímero.
-    
-    return webdriver.Chrome(options=options)
 
-# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (Sin cambios, usa la función de setup modificada) ---
+    driver = webdriver.Chrome(options=options)
+    yield driver # El driver se entrega aquí
+    # --- Limpieza --- 
+    # Este código se ejecuta cuando el recurso se libera (ej: fin de sesión)
+    st.info("🧹 Cerrando la instancia del navegador virtual.")
+    driver.quit()
+
+# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (REFACTORIZADA) ---
 def obtener_datos_completos_partido(match_id: str):
     if not match_id or not match_id.isdigit():
         return {"error": "ID de partido inválido."}
 
     st.info(f"Iniciando análisis para el partido ID: {match_id}...")
-    driver = None
     
     try:
-        st.info("⚙️ Configurando el navegador virtual...")
-        driver = setup_selenium_driver_for_streamlit()
+        # Obtenemos el driver compartido desde el gestor de recursos
+        driver = get_selenium_driver()
+        
         main_page_url = f"{BASE_URL_OF}/match/h2h-{match_id}"
         datos = {"match_id": match_id}
 
-        st.info(f"🌐 Navegando a la página del partido...")
+        st.info(f"🌐 Navegando a la página del partido (usando navegador compartido)...")
         driver.get(main_page_url)
         
         WebDriverWait(driver, SELENIUM_TIMEOUT_SECONDS_OF).until(
@@ -134,10 +138,7 @@ def obtener_datos_completos_partido(match_id: str):
     except Exception as e:
         st.error(f"Ocurrió un error inesperado durante el scraping: {e}")
         return {"error": f"Error inesperado en el scraper: {e}"}
-    finally:
-        if driver:
-            driver.quit()
-            st.info("✅ Navegador virtual cerrado.")
+    # Ya no se necesita el bloque finally para cerrar el driver aquí
 
 # ... (El resto de funciones auxiliares permanecen igual)
 

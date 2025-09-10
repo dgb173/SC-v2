@@ -1,4 +1,3 @@
-
 import streamlit as st
 import asyncio
 import pandas as pd
@@ -9,7 +8,6 @@ from bs4 import BeautifulSoup
 import datetime
 
 # --- Dependencias del Proyecto ---
-# Esta importación puede ser lenta, la movemos aquí después de la instalación de navegadores
 from modules.estudio_scraper import obtener_datos_completos_partido
 
 # --- Configuración de la Página ---
@@ -84,14 +82,9 @@ def get_main_page_matches_cached(limit=50):
                 await browser.close()
     return asyncio.run(get_matches())
 
-@st.cache_data(ttl=3600)
-def obtener_datos_completos_partido_cached(match_id):
-    return obtener_datos_completos_partido(match_id)
-
 # --- Lógica Principal de la App ---
 st.title("⚽ Dashboard de Análisis de Partidos")
 
-# Inicializar el estado de la sesión para guardar el partido seleccionado
 if 'selected_match_id' not in st.session_state:
     st.session_state.selected_match_id = None
 
@@ -99,13 +92,12 @@ if 'selected_match_id' not in st.session_state:
 if st.session_state.selected_match_id:
     match_id = st.session_state.selected_match_id
     
-    # Botón para volver a la lista
     if st.button("⬅️ Volver a la lista de partidos"):
         st.session_state.selected_match_id = None
         st.rerun()
 
-    # Realizar y mostrar el análisis
-    datos_partido = obtener_datos_completos_partido_cached(match_id)
+    # Ya no usamos una función cacheada aquí, llamamos directamente a la principal
+    datos_partido = obtener_datos_completos_partido(match_id)
     
     if not datos_partido or "error" in datos_partido:
         st.error(f"Error al obtener datos para el partido {match_id}: {datos_partido.get('error', 'Error desconocido')}")
@@ -133,7 +125,6 @@ else:
             else:
                 st.success(f"Se encontraron {len(matches)} partidos.")
                 
-                # Crear una tarjeta para cada partido
                 for match in matches:
                     with st.container(border=True):
                         col1, col2, col3 = st.columns([4, 2, 2])
@@ -143,7 +134,6 @@ else:
                             st.text(f"🗓️ {match['Fecha']}")
                             st.text(f"⏰ {match['Hora']}")
                         with col3:
-                            # Botón de análisis con una clave única para cada partido
                             if st.button("Analizar Partido", key=f"analizar_{match['ID']}"):
                                 st.session_state.selected_match_id = match['ID']
                                 st.rerun()
