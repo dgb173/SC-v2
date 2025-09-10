@@ -1,6 +1,25 @@
-
-# app.py - Interfaz de usuario con Streamlit
 import streamlit as st
+import subprocess
+import sys
+
+# ----------------- BLOQUE DE INSTALACIÓN DE PLAYWRIGHT -----------------
+# Este bloque se asegura de que los navegadores de Playwright estén instalados
+# en el entorno de Streamlit Cloud.
+@st.cache_resource
+def install_playwright_browsers():
+    with st.spinner("Instalando navegadores para Playwright (esto solo ocurre una vez)..."):
+        try:
+            # Usamos python -m para ser más robustos
+            subprocess.run([sys.executable, "-m", "playwright", "install", "--with-deps"], check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            st.error("Error al instalar los navegadores de Playwright.")
+            st.exception(e)
+            st.stop()
+
+# Llamamos a la función de instalación
+install_playwright_browsers()
+# --------------------------------------------------------------------
+
 import asyncio
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
