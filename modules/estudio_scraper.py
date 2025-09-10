@@ -1,10 +1,10 @@
-
 # modules/estudio_scraper.py
 import streamlit as st
 import time
 import re
 import math
 import pandas as pd
+import tempfile # <--- AÑADIDO PARA DIRECTORIOS TEMPORALES
 from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import requests
@@ -19,7 +19,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
-# Importaciones de módulos locales (movidas a la parte superior)
+# Importaciones de módulos locales
 from modules.analisis_avanzado import generar_analisis_comparativas_indirectas
 from modules.analisis_reciente import analizar_rendimiento_reciente_con_handicap, comparar_lineas_handicap_recientes
 from modules.analisis_rivales import analizar_rivales_comunes, analizar_contra_rival_del_rival
@@ -34,7 +34,7 @@ BASE_URL_OF = "https://live18.nowgoal25.com"
 SELENIUM_TIMEOUT_SECONDS_OF = 15
 PLACEHOLDER_NODATA = "*(No disponible)*"
 
-# --- NUEVA FUNCIÓN PARA CONFIGURAR EL DRIVER DE SELENIUM EN STREAMLIT ---
+# --- FUNCIÓN DE CONFIGURACIÓN DEL DRIVER (MODIFICADA) ---
 def setup_selenium_driver_for_streamlit():
     """Configura y devuelve un driver de Selenium compatible con Streamlit Cloud."""
     options = ChromeOptions()
@@ -44,76 +44,62 @@ def setup_selenium_driver_for_streamlit():
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument('--blink-settings=imagesEnabled=false')
+    options.add_argument("--disable-extensions") # Añadido para mayor estabilidad
+
+    # --- CAMBIO CLAVE: Usar un directorio de datos de usuario único y temporal ---
+    user_data_dir = tempfile.mkdtemp()
+    options.add_argument(f"--user-data-dir={user_data_dir}")
     
-    # Este es el cambio clave: Streamlit maneja el ejecutable del driver
     return webdriver.Chrome(options=options)
 
-# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (REFACTORIZADA) ---
-
+# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (Sin cambios, usa la función de setup modificada) ---
 def obtener_datos_completos_partido(match_id: str):
-    """
-    Función principal que orquesta todo el scraping y análisis para un ID de partido.
-    Devuelve un diccionario con todos los datos necesarios para la plantilla HTML.
-    Está refactorizada para ser más robusta y compatible con Streamlit.
-    """
     if not match_id or not match_id.isdigit():
         return {"error": "ID de partido inválido."}
 
     st.info(f"Iniciando análisis para el partido ID: {match_id}...")
-    driver = None  # Inicializar driver a None
+    driver = None
     
     try:
-        # --- 1. Inicialización de Selenium (compatible con Streamlit) ---
         st.info("⚙️ Configurando el navegador virtual...")
         driver = setup_selenium_driver_for_streamlit()
         main_page_url = f"{BASE_URL_OF}/match/h2h-{match_id}"
         datos = {"match_id": match_id}
 
-        # --- 2. Carga y Parseo de la Página Principal ---
-        st.info(f"🌐 Navegando a la página del partido... (Puede tardar unos segundos)")
+        st.info(f"🌐 Navegando a la página del partido...")
         driver.get(main_page_url)
         
-        # Espera a que un elemento clave de la página esté presente
         WebDriverWait(driver, SELENIUM_TIMEOUT_SECONDS_OF).until(
             EC.presence_of_element_located((By.ID, "table_v1"))
         )
         st.success("✅ Página principal cargada.")
 
-        # Seleccionar "All" en los desplegables de historial
         st.info("🔍 Ajustando filtros de historial a 'All'...")
         for select_id in ["hSelect_1", "hSelect_2", "hSelect_3"]:
             try:
                 select_element = Select(WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, select_id))))
-                select_element.select_by_value("0") # "0" suele ser el valor para "All"
+                select_element.select_by_value("0")
             except TimeoutException:
                 st.warning(f"No se encontró el filtro '{select_id}', continuando sin él.")
                 continue
         
-        # Pequeña espera para que el DOM se actualice tras los cambios
         time.sleep(2)
-        
         soup_completo = BeautifulSoup(driver.page_source, "lxml")
         st.success("📄 Contenido de la página parseado.")
 
-        # --- 3. Extracción de Datos Primarios ---
         st.info("📊 Extrayendo datos primarios (equipos, liga...).")
         home_id, away_id, league_id, home_name, away_name, league_name = get_team_league_info_from_script_of(soup_completo)
         if not home_name or not away_name or home_name == "N/A":
-             return {"error": "No se pudo extraer la información básica de los equipos. La página podría no ser válida."}
+             return {"error": "No se pudo extraer la información básica de los equipos."}
         datos.update({"home_name": home_name, "away_name": away_name, "league_name": league_name})
 
-        # --- 4. Recopilación de datos en paralelo ---
         st.info("🚀 Ejecutando análisis en paralelo...")
         with ThreadPoolExecutor(max_workers=8) as executor:
-            # Tareas que dependen del soup_completo
             future_main_odds = executor.submit(extract_bet365_initial_odds_of, soup_completo)
             future_h2h_data = executor.submit(extract_h2h_data_of, soup_completo, home_name, away_name, None)
-            
-            # Análisis de rendimiento reciente
             future_rendimiento_local = executor.submit(analizar_rendimiento_reciente_con_handicap, soup_completo, home_name, True)
             future_rendimiento_visitante = executor.submit(analizar_rendimiento_reciente_con_handicap, soup_completo, away_name, False)
 
-            # Obtener resultados
             main_match_odds_data = future_main_odds.result()
             h2h_data = future_h2h_data.result()
             rendimiento_local = future_rendimiento_local.result()
@@ -121,32 +107,24 @@ def obtener_datos_completos_partido(match_id: str):
 
         st.success("📈 Análisis de datos completado.")
 
-        # --- 5. Generación de HTML y Datos Finales ---
         st.info("✍️ Generando resúmenes y notas del analista...")
-        
-        # Línea de handicap actual
         current_ah_line = parse_ah_to_number_of(main_match_odds_data.get('ah_linea_raw', '0'))
         
-        # Comparación de líneas (si hay datos)
         comparacion_local = {}
         comparacion_visitante = {}
         if current_ah_line is not None:
             comparacion_local = comparar_lineas_handicap_recientes(soup_completo, home_name, current_ah_line, True)
             comparacion_visitante = comparar_lineas_handicap_recientes(soup_completo, away_name, current_ah_line, False)
 
-        # Generar los bloques de análisis en HTML
         datos["market_analysis_html"] = generar_analisis_completo_mercado(main_match_odds_data, h2h_data, home_name, away_name)
         datos["recent_performance_analysis_html"] = generar_analisis_rendimiento_reciente(home_name, away_name, rendimiento_local, rendimiento_visitante, current_ah_line, comparacion_local, comparacion_visitante)
         
-        # (Aquí se podrían añadir las otras llamadas a funciones de análisis si se refactorizan de manera similar)
-        # Por simplicidad, nos centramos en las que ya tenemos y son más robustas.
-
         st.success("🎉 ¡Análisis finalizado con éxito!")
         return datos
 
     except TimeoutException:
-        st.error("Error de Timeout: La página tardó demasiado en responder o un elemento no se encontró a tiempo.")
-        return {"error": "Timeout durante el scraping. La web de origen puede estar lenta o caída."}
+        st.error("Error de Timeout: La página tardó demasiado en responder.")
+        return {"error": "Timeout durante el scraping."}
     except WebDriverException as e:
         st.error(f"Error de WebDriver: Hubo un problema con el navegador virtual. Mensaje: {e}")
         return {"error": f"Error de Selenium/WebDriver: {e}"}
@@ -154,17 +132,11 @@ def obtener_datos_completos_partido(match_id: str):
         st.error(f"Ocurrió un error inesperado durante el scraping: {e}")
         return {"error": f"Error inesperado en el scraper: {e}"}
     finally:
-        # --- 6. Cierre del Driver ---
         if driver:
             driver.quit()
             st.info("✅ Navegador virtual cerrado.")
 
-# El resto de funciones de extracción (extract_bet365_initial_odds_of, extract_h2h_data_of, etc.)
-# permanecen igual, ya que operan sobre el objeto `soup` y no interactúan con el driver.
-# Se asume que están en este mismo archivo o importadas correctamente.
-
-# (El código de las funciones auxiliares como get_team_league_info_from_script_of, etc., debería estar aquí debajo)
-# ... (pegando el resto de funciones del archivo original para que sea autocontenido)
+# ... (El resto de funciones auxiliares permanecen igual)
 
 def get_team_league_info_from_script_of(soup):
     script_tag = soup.find("script", string=re.compile(r"var _matchInfo = "))
