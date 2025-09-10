@@ -78,6 +78,13 @@ def _analizar_precedente_goles(precedente_data, goles_actual_num):
         return "<li><span class='score-value'>Goles:</span> No se pudo procesar el resultado del precedente.</li>"
 
 def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func=None, parse_ah_func=None):
+    # If the additional functions aren't provided, use the ones from utils
+    if format_ah_func is None:
+        format_ah_func = format_ah_as_decimal_string_of
+        
+    if parse_ah_func is None:
+        parse_ah_func = parse_ah_to_number_of
+    
     ah_actual_str = format_ah_func(main_odds.get('ah_linea_raw', '-'))
     ah_actual_num = parse_ah_func(ah_actual_str)
     goles_actual_num = parse_ah_func(main_odds.get('goals_linea_raw', '-'))

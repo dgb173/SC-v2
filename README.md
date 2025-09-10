@@ -14,24 +14,36 @@ Este proyecto es una aplicación Streamlit para analizar partidos de fútbol uti
 
 ## Instalación
 
-1. Clona este repositorio:
+### Método 1: Script Automático (Recomendado)
+
+En Windows:
 ```bash
-git clone <url-del-repositorio>
-cd Definitivo
+EMPEZAR_AQUI.bat
 ```
 
-2. Crea un entorno virtual (opcional pero recomendado):
+En Linux/Mac:
 ```bash
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+chmod +x empezar_aqui.sh
+./empezar_aqui.sh
 ```
 
-3. Instala las dependencias:
+### Método 2: Instalación Manual
+
+1. Crea un entorno virtual (opcional pero recomendado):
+```bash
+python -m venv .venv
+# En Windows:
+.venv\Scripts\activate
+# En Linux/Mac:
+source .venv/bin/activate
+```
+
+2. Instala las dependencias:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Instala los navegadores necesarios para Playwright:
+3. Instala los navegadores necesarios para Playwright:
 ```bash
 playwright install chromium
 ```
@@ -55,19 +67,31 @@ streamlit run app.py
 - `app.py`: Aplicación principal de Streamlit
 - `modules/`: Contiene los módulos de análisis y scraping
 - `requirements.txt`: Dependencias del proyecto
+- `EMPEZAR_AQUI.bat/sh`: Scripts de inicio automático
+- `INSTALAR.bat/sh`: Scripts de instalación
 - `README.md`: Este archivo
 
 ## Solución de Problemas
 
 Si la aplicación no se ejecuta correctamente:
 
-1. Verifica que todas las dependencias estén instaladas
-2. Asegúrate de que los navegadores de Playwright estén instalados
+1. Verifica que todas las dependencias estén instaladas:
+   ```bash
+   python verify_installation.py
+   ```
+
+2. Asegúrate de que los navegadores de Playwright estén instalados:
+   ```bash
+   playwright install chromium
+   ```
+
 3. Revisa la consola de errores para identificar problemas específicos
-4. Ejecuta `python test_app.py` para verificar la instalación
+
+4. Si hay errores de importación, verifica que el directorio `modules` exista y contenga todos los archivos .py
 
 ## Notas
 
 - La aplicación utiliza Playwright para hacer web scraping, lo que requiere navegadores adicionales
 - El primer inicio puede tardar más tiempo mientras se instalan los navegadores
 - En Streamlit Cloud, el despliegue puede tardar unos minutos en la primera ejecución
+- La aplicación necesita acceso a internet para obtener los datos de los partidos
