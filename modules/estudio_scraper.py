@@ -36,15 +36,32 @@ async def get_playwright_browser():
     Crea y devuelve una instancia del navegador. La caché de Streamlit
     evitará que se re-ejecute la corutina, devolviendo el objeto browser cacheado.
     """
-    st.info("⚙️ Creando una nueva instancia del navegador virtual (Playwright)...")
-    try:
-        p = await async_playwright().start()
-        browser = await p.chromium.launch(headless=True)
-        st.success("✅ Instancia del navegador creada.")
-        return browser # Usamos return en lugar de yield para evitar el error de corutina
-    except Exception as e:
-        st.error(f"No se pudo iniciar Playwright: {e}")
-        st.stop()
+    # Check if we're in Streamlit Cloud environment
+    import os
+    if os.environ.get('STREAMLIT_SERVER'):
+        st.info("⚙️ Ejecutando en entorno cloud - usando configuración optimizada...")
+        try:
+            p = await async_playwright().start()
+            # In cloud environments, we might need different launch options
+            browser = await p.chromium.launch(
+                headless=True,
+                args=['--no-sandbox', '--disable-dev-shm-usage']
+            )
+            st.success("✅ Instancia del navegador creada (cloud mode).")
+            return browser
+        except Exception as e:
+            st.error(f"No se pudo iniciar Playwright en cloud: {e}")
+            return None
+    else:
+        st.info("⚙️ Creando una nueva instancia del navegador virtual (Playwright)...")
+        try:
+            p = await async_playwright().start()
+            browser = await p.chromium.launch(headless=True)
+            st.success("✅ Instancia del navegador creada.")
+            return browser # Usamos return en lugar de yield para evitar el error de corutina
+        except Exception as e:
+            st.error(f"No se pudo iniciar Playwright: {e}")
+            return None
 
 # --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN ---
 def obtener_datos_completos_partido(match_id: str):
@@ -59,6 +76,9 @@ async def obtener_datos_completos_partido_async(match_id: str):
     context = None
     try:
         browser = await get_playwright_browser()
+        if browser is None:
+            return {"error": "No se pudo crear la instancia del navegador. Esto puede deberse a restricciones del entorno de ejecución en la nube."}
+        
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         )

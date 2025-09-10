@@ -1,0 +1,9 @@
+<!-- ANÁLISIS H2H INDIRECTO -->
+{% if data.h2h_indirect_analysis_html %}
+    {{ data.h2h_indirect_analysis_html | safe }}
+{% else %}
+    <div style="border-left: 4px solid #FF6B35; padding: 12px 15px; margin-top: 15px; background-color: #fff0e6; border-radius: 5px; font-size: 0.95em;">
+        <p style='margin-bottom: 12px;'><strong>🔄 Análisis H2H Indirecto</strong><br>
+        <span style='font-style: italic; font-size: 0.9em;'>No hay datos suficientes para el análisis H2H indirecto.</span></p>
+    </div>
+{% endif %}

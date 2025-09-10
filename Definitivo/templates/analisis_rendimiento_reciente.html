@@ -1,0 +1,9 @@
+<!-- ANÁLISIS DE RENDIMIENTO RECIENTE VS HISTÓRICO -->
+{% if data.recent_performance_analysis_html %}
+    {{ data.recent_performance_analysis_html | safe }}
+{% else %}
+    <div style="border-left: 4px solid #1E90FF; padding: 12px 15px; margin-top: 15px; background-color: #f0f2f6; border-radius: 5px; font-size: 0.95em;">
+        <p style='margin-bottom: 12px;'><strong>📊 Análisis de Rendimiento Reciente vs. Histórico</strong><br>
+        <span style='font-style: italic; font-size: 0.9em;'>No hay datos suficientes para el análisis de rendimiento reciente.</span></p>
+    </div>
+{% endif %}
