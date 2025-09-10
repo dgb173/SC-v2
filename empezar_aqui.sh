@@ -1,0 +1,9 @@
+#!/bin/bash
+echo "Instalando dependencias del proyecto..."
+pip install -r requirements.txt
+
+echo "Instalando navegadores para Playwright..."
+playwright install chromium
+
+echo "Ejecutando la aplicacion..."
+streamlit run app.py

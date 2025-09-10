@@ -193,5 +193,18 @@ def extract_h2h_data_of(soup, home_name, away_name, league_id=None):
 def _analizar_precedente_handicap(precedente_data, ah_actual_num, favorito_actual_name, main_home_team_name):
     return ""
 
-def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name):
-    return ""
+# Import the function from the correct module
+from modules.analisis_avanzado import generar_analisis_completo_mercado as _generar_analisis_completo_mercado
+
+def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func=None, parse_ah_func=None):
+    # If the additional functions aren't provided, use the ones from utils
+    if format_ah_func is None:
+        from modules.utils import format_ah_as_decimal_string_of
+        format_ah_func = format_ah_as_decimal_string_of
+        
+    if parse_ah_func is None:
+        from modules.utils import parse_ah_to_number_of
+        parse_ah_func = parse_ah_to_number_of
+    
+    # Call the actual implementation from analisis_avanzado module
+    return _generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func, parse_ah_func)
