@@ -1,3 +1,4 @@
+
 # app.py - Interfaz de usuario con Streamlit
 import streamlit as st
 import asyncio
@@ -7,8 +8,8 @@ import datetime
 import pandas as pd
 
 # Importar las funciones principales de los módulos de scraping
-from modules.estudio_scraper import obtener_datos_completos_partido, format_ah_as_decimal_string_of
-from modules.utils import format_ah_as_decimal_string_of as format_ah_util # Renombrar para evitar conflicto
+from modules.estudio_scraper import obtener_datos_completos_partido
+from modules.utils import format_ah_as_decimal_string_of as format_ah_util
 
 # --- Configuración de la página de Streamlit ---
 st.set_page_config(
@@ -24,9 +25,10 @@ Esta aplicación extrae y analiza datos de partidos de fútbol para proporcionar
 sobre rendimiento, enfrentamientos directos (H2H) y mercados de apuestas.
 """)
 
-# --- Lógica para obtener y mostrar la lista de próximos partidos ---
+# --- Lógica para obtener y mostrar la lista de próximos partidos (CORREGIDO) ---
 URL_NOWGOAL = "https://live20.nowgoal25.com/"
 
+# 1. La función de parseo sigue igual y se puede cachear porque es una función pura.
 @st.cache_data(ttl=600) # Cachear los resultados por 10 minutos
 def parse_main_page_matches(html_content, limit=50):
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -69,25 +71,36 @@ def parse_main_page_matches(html_content, limit=50):
     upcoming_matches.sort(key=lambda x: x['Hora'])
     return upcoming_matches[:limit]
 
-@st.cache_data(ttl=600)
-async def get_main_page_matches_async():
+# 2. Función asíncrona que SOLO obtiene el HTML. No se cachea.
+async def _get_main_page_html_async():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-dev-shm-usage'])
         page = await browser.new_page()
         try:
             await page.goto(URL_NOWGOAL, wait_until="domcontentloaded", timeout=20000)
             await page.wait_for_timeout(5000)
-            html_content = await page.content()
-            return parse_main_page_matches(html_content)
+            return await page.content()
         finally:
             await browser.close()
+
+# 3. Función síncrona que ORQUESTA todo. ESTA es la que se cachea.
+@st.cache_data(ttl=600)
+def get_upcoming_matches_data():
+    """
+    Esta función síncrona llama a la lógica asíncrona para obtener el HTML
+    y luego lo pasa a la función de parseo. El resultado final (una lista)
+    es serializable y se puede cachear de forma segura.
+    """
+    html_content = asyncio.run(_get_main_page_html_async())
+    return parse_main_page_matches(html_content)
 
 # --- Sección de Próximos Partidos ---
 st.header("📅 Próximos Partidos")
 if st.button("Cargar Próximos Partidos"):
     with st.spinner("Buscando partidos en Nowgoal... Esto puede tardar un momento."):
         try:
-            matches_data = asyncio.run(get_main_page_matches_async())
+            # 4. Se llama a la nueva función síncrona cacheable
+            matches_data = get_upcoming_matches_data()
             if matches_data:
                 df = pd.DataFrame(matches_data)
                 st.dataframe(df, use_container_width=True)
@@ -96,6 +109,7 @@ if st.button("Cargar Próximos Partidos"):
                 st.warning("No se encontraron próximos partidos que cumplan los criterios.")
         except Exception as e:
             st.error(f"No se pudieron cargar los partidos: {e}")
+            st.exception(e) # Muestra el traceback completo para más detalles
 
 # --- Sección de Análisis de Partido por ID ---
 st.header("🔍 Analizar Partido por ID")
@@ -126,3 +140,4 @@ if st.button("Analizar Partido"):
 
             except Exception as e:
                 st.error(f"Ocurrió un error crítico durante el análisis: {e}")
+                st.exception(e) # Muestra el traceback completo para más detalles
