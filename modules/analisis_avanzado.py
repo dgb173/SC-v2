@@ -1,4 +1,3 @@
-
 # modules/analisis_avanzado.py
 import re
 import math
@@ -23,7 +22,7 @@ def _analizar_precedente_handicap(precedente_data, ah_actual_num, favorito_actua
     if ah_historico_num is not None and ah_actual_num is not None:
         formatted_ah_historico = format_ah_func(ah_raw)
         formatted_ah_actual = format_ah_func(str(ah_actual_num))
-        line_movement_str = f"{formatted_ah_historico} → {formatted_ah_actual}"
+        line_movement_str = f"{formatted_ah_historico} -> {formatted_ah_actual}"
         
         favorito_historico_name = None
         if ah_historico_num > 0:
@@ -43,7 +42,7 @@ def _analizar_precedente_handicap(precedente_data, ah_actual_num, favorito_actua
                 comparativa_texto = f"Ha habido un <strong>cambio total de favoritismo</strong>. En el precedente el favorito era '{favorito_historico_name}' (movimiento: <strong style='color: red; font-size:1.2em;'>{line_movement_str}</strong>). "
             elif not favorito_historico_name:
                 comparativa_texto = f"El mercado establece un favorito claro, considerándolo <strong>mucho más favorito</strong> que en el precedente (movimiento: <strong style='color: green; font-size:1.2em;'>{line_movement_str}</strong>). "
-            else:
+            else: # favorito_actual_name es "Ninguno (línea en 0)"
                 comparativa_texto = f"El mercado <strong>ha eliminado al favorito</strong> ('{favorito_historico_name}') que existía en el precedente (movimiento: <strong style='color: orange; font-size:1.2em;'>{line_movement_str}</strong>). "
     else:
         comparativa_texto = f"No se pudo realizar una comparación detallada (línea histórica: <strong>{format_ah_func(ah_raw)}</strong>). "
@@ -51,13 +50,13 @@ def _analizar_precedente_handicap(precedente_data, ah_actual_num, favorito_actua
     resultado_cover, cubierto = check_handicap_cover(res_raw, ah_actual_num, favorito_actual_name, home_team_precedente, away_team_precedente, main_home_team_name)
     
     if cubierto is True:
-        cover_html = f"<span style='color: green; font-weight: bold;'>CUBIERTO ✅</span>"
+        cover_html = f"<span style='color: green; font-weight: bold;'>CUBIERTO (V)</span>"
     elif cubierto is False:
-        cover_html = f"<span style='color: red; font-weight: bold;'>NO CUBIERTO ❌</span>"
+        cover_html = f"<span style='color: red; font-weight: bold;'>NO CUBIERTO (X)</span>"
     else:
-        cover_html = f"<span style='color: #6c757d; font-weight: bold;'>{resultado_cover.upper()} 🤔</span>"
+        cover_html = f"<span style='color: #6c757d; font-weight: bold;'>{resultado_cover.upper()} (PUSH)</span>"
 
-    return f"<li><span class='ah-value'>Hándicap:</span> {comparativa_texto}Con el resultado ({res_raw.replace('-' , ':')}), la línea actual se habría considerado {cover_html}.</li>"
+    return f"<li><span class='ah-value'>Hándicap:</span> {comparativa_texto}Con el resultado ({res_raw.replace('-', ':')}), la línea actual se habría considerado {cover_html}.</li>"
 
 def _analizar_precedente_goles(precedente_data, goles_actual_num):
     res_raw = precedente_data.get('res_raw')
@@ -78,10 +77,8 @@ def _analizar_precedente_goles(precedente_data, goles_actual_num):
         return "<li><span class='score-value'>Goles:</span> No se pudo procesar el resultado del precedente.</li>"
 
 def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func=None, parse_ah_func=None):
-    # If the additional functions aren't provided, use the ones from utils
     if format_ah_func is None:
         format_ah_func = format_ah_as_decimal_string_of
-        
     if parse_ah_func is None:
         parse_ah_func = parse_ah_to_number_of
     
@@ -97,7 +94,7 @@ def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name,
     elif ah_actual_num > 0:
         favorito_name, favorito_html = home_name, f"<span class='home-color'>{home_name}</span>"
     
-    titulo_html = f"<p style='margin-bottom: 12px;'><strong>📊 Análisis de Mercado vs. Histórico H2H</strong><br><span style='font-style: italic; font-size: 0.9em;'>Líneas actuales: AH {ah_actual_str} / Goles {goles_actual_num} | Favorito: {favorito_html}</span></p>"
+    titulo_html = f"<p style='margin-bottom: 12px;'><strong>Análisis de Mercado vs. Histórico H2H</strong><br><span style='font-style: italic; font-size: 0.9em;'>Líneas actuales: AH {ah_actual_str} / Goles {goles_actual_num} | Favorito: {favorito_html}</span></p>"
 
     precedente_estadio = {
         'res_raw': h2h_data.get('res1_raw'), 'ah_raw': h2h_data.get('ah1'),
@@ -108,7 +105,7 @@ def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name,
     
     analisis_estadio_html = (
         f"<div style='margin-bottom: 10px;'>"
-        f"  <strong style='font-size: 1.05em;'>🏟️ Análisis del Precedente en Este Estadio</strong>"
+        f"  <strong style='font-size: 1.05em;'>Análisis del Precedente en Este Estadio</strong>"
         f"  <ul style='margin: 5px 0 0 20px; padding-left: 0;'>{sintesis_ah_estadio}{sintesis_goles_estadio}</ul>"
         f"</div>"
     )
@@ -118,7 +115,7 @@ def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name,
     if precedente_estadio['match_id'] and precedente_general_id and precedente_estadio['match_id'] == precedente_general_id:
         analisis_general_html = (
             "<div style='margin-top: 10px;'>"
-            "  <strong>✈️ Análisis del H2H General Más Reciente</strong>"
+            "  <strong>Análisis del H2H General Más Reciente</strong>"
             "  <p style='margin: 5px 0 0 20px; font-style: italic; font-size: 0.9em;'>"
             "    El precedente es el mismo partido analizado arriba."
             "  </p>"
@@ -137,7 +134,7 @@ def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name,
         
         analisis_general_html = (
             f"<div>"
-            f"  <strong style='font-size: 1.05em;'>✈️ Análisis del H2H General Más Reciente</strong>"
+            f"  <strong style='font-size: 1.05em;'>Análisis del H2H General Más Reciente</strong>"
             f"  <ul style='margin: 5px 0 0 20px; padding-left: 0;'>{sintesis_ah_general}{sintesis_goles_general}</ul>"
             f"</div>"
         )
@@ -151,8 +148,6 @@ def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name,
     """
 
 def generar_analisis_comparativas_indirectas(data):
-    # Esta función ya existía, la mantenemos.
     if not data or not data.get("comp1") or not data.get("comp2"):
         return ""
-    # ... (lógica existente)
     return ""

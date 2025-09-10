@@ -1,0 +1,132 @@
+
+[     UTC     ] Logs for scradgb173.streamlit.app/
+────────────────────────────────────────────────────────────────────────────────────────
+[11:39:05] 🚀 Starting up repository: 'masivo', branch: 'main', main module: 'app.py'
+[11:39:05] 🐙 Cloning repository...
+[11:39:08] 🐙 Cloning into '/mount/src/masivo'...
+
+[11:39:08] 🐙 Cloned repository!
+[11:39:08] 🐙 Pulling code changes from Github...
+[11:39:09] 📦 Processing dependencies...
+[11:39:09] 📦 Apt dependencies were installed from /mount/src/masivo/packages.txt using apt-get.
+Hit:1 http://deb.debian.org/debian bullseye InRelease
+Get:2 http://deb.debian.org/debian-security bullseye-security InRelease [27.2 kB]
+Hit:3 http://deb.debian.org/debian bullseye-updates InRelease
+Get:4 https://packages.microsoft.com/debian/11/prod bullseye InRelease [3650 B]
+Get:5 http://deb.debian.org/debian-security bullseye-security/main amd64 Packages [394 kB]
+Get:6 https://packages.microsoft.com/debian/11/prod bullseye/main amd64 Packages [207 kB]
+Get:7 https://packages.microsoft.com/debian/11/prod bullseye/main arm64 Packages [53.8 kB]
+Fetched 685 kB in 1s (639 kB/s)
+Reading package lists...[2025-09-10 11:39:11.658496] 
+Reading package lists...[2025-09-10 11:39:12.371484] 
+Building dependency tree...[2025-09-10 11:39:12.616060] 
+Reading state information...[2025-09-10 11:39:12.616406] 
+E: Unable to locate package #
+E: Unable to locate package No
+E: Unable to locate package extra
+E: Unable to locate package system
+E: Unable to locate package packages
+E: Unable to locate package required
+E: Unable to locate package for
+E: [2025-09-10 11:39:12.858417] Unable to locate package Streamlit
+[11:39:13] ❗️ installer returned a non-zero exit code
+[11:39:13] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
+[18:46:18] 🖥 Provisioning machine...
+[18:46:22] 🚀 Starting up repository: 'masivo', branch: 'main', main module: 'app.py'
+[18:46:22] 🐙 Cloning repository...
+[18:46:24] 🐙 Cloning into '/mount/src/masivo'...
+
+[18:46:24] 🐙 Cloned repository!
+[18:46:24] 🐙 Pulling code changes from Github...
+[18:46:23] 🎛 Preparing system...
+[18:46:23] ⛓ Spinning up manager process...
+[18:46:24] 📦 Processing dependencies...
+[18:46:24] 📦 Apt dependencies were installed from /mount/src/masivo/packages.txt using apt-get.
+Hit:1 http://deb.debian.org/debian bullseye InRelease
+Get:2 http://deb.debian.org/debian-security bullseye-security InRelease [27.2 kB]
+Hit:3 http://deb.debian.org/debian bullseye-updates InRelease
+Get:4 https://packages.microsoft.com/debian/11/prod bullseye InRelease [3650 B]
+Get:5 http://deb.debian.org/debian-security bullseye-security/main amd64 Packages [394 kB]
+Get:6 https://packages.microsoft.com/debian/11/prod bullseye/main arm64 Packages [53.8 kB]
+Get:7 https://packages.microsoft.com/debian/11/prod bullseye/main amd64 Packages [207 kB]
+Fetched 685 kB in 1s (914 kB/s)
+Reading package lists...[2025-09-10 18:46:26.059125] 
+Reading package lists...[2025-09-10 18:46:26.610060] 
+Building dependency tree...[2025-09-10 18:46:26.784397] 
+Reading state information...[2025-09-10 18:46:26.784702] 
+E: Unable to locate package #
+E: Unable to locate package No
+E: Unable to locate package extra
+E: Unable to locate package system
+E: Unable to locate package packages
+E: Unable to locate package required
+E: Unable to locate package for
+E: Unable to locate package Streamlit
+[18:46:26] ❗️ installer returned a non-zero exit code
+[18:46:26] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
+[18:47:03] 🖥 Provisioning machine...
+[18:47:42] 🎛 Preparing system...
+[18:47:43] ⛓ Spinning up manager process...
+[18:47:08] 🚀 Starting up repository: 'masivo', branch: 'main', main module: 'app.py'
+[18:47:08] 🐙 Cloning repository...
+[18:47:13] 🐙 Cloning into '/mount/src/masivo'...
+
+[18:47:13] 🐙 Cloned repository!
+[18:47:13] 🐙 Pulling code changes from Github...
+[18:47:14] 📦 Processing dependencies...
+[18:47:14] 📦 Apt dependencies were installed from /mount/src/masivo/packages.txt using apt-get.
+Hit:1 http://deb.debian.org/debian bullseye InRelease
+Get:2 http://deb.debian.org/debian-security bullseye-security InRelease [27.2 kB]
+Hit:3 http://deb.debian.org/debian bullseye-updates InRelease
+Get:4 https://packages.microsoft.com/debian/11/prod bullseye InRelease [3650 B]
+Get:5 http://deb.debian.org/debian-security bullseye-security/main amd64 Packages [394 kB]
+Get:6 https://packages.microsoft.com/debian/11/prod bullseye/main amd64 Packages [207 kB]
+Get:7 https://packages.microsoft.com/debian/11/prod bullseye/main arm64 Packages [53.8 kB]
+Fetched 685 kB in 1s (664 kB/s)
+Reading package lists...[2025-09-10 18:47:17.065932] 
+Reading package lists...[2025-09-10 18:47:18.163726] 
+Building dependency tree...[2025-09-10 18:47:18.557396] 
+Reading state information...[2025-09-10 18:47:18.564427] 
+E: Unable to locate package #
+E: Unable to locate package No
+E: Unable to locate package extra
+E: Unable to locate package system
+E: Unable to locate package packages
+E: Unable to locate package required
+E: Unable to locate package for
+E: Unable to locate package Streamlit
+[18:47:20] ❗️ installer returned a non-zero exit code
+[18:47:20] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
+[18:48:29] 🖥 Provisioning machine...
+[18:48:50] 🎛 Preparing system...
+[18:48:51] ⛓ Spinning up manager process...
+[18:48:31] 🚀 Starting up repository: 'masivo', branch: 'main', main module: 'app.py'
+[18:48:31] 🐙 Cloning repository...
+[18:48:34] 🐙 Cloning into '/mount/src/masivo'...
+
+[18:48:34] 🐙 Cloned repository!
+[18:48:34] 🐙 Pulling code changes from Github...
+[18:48:34] 📦 Processing dependencies...
+[18:48:34] 📦 Apt dependencies were installed from /mount/src/masivo/packages.txt using apt-get.
+Hit:1 http://deb.debian.org/debian bullseye InRelease
+Get:2 http://deb.debian.org/debian-security bullseye-security InRelease [27.2 kB]
+Hit:3 http://deb.debian.org/debian bullseye-updates InRelease
+Get:4 https://packages.microsoft.com/debian/11/prod bullseye InRelease [3650 B]
+Get:5 http://deb.debian.org/debian-security bullseye-security/main amd64 Packages [394 kB]
+Get:6 https://packages.microsoft.com/debian/11/prod bullseye/main arm64 Packages [53.8 kB]
+Get:7 https://packages.microsoft.com/debian/11/prod bullseye/main amd64 Packages [207 kB]
+Fetched 685 kB in 1s (948 kB/s)
+Reading package lists...[2025-09-10 18:48:36.066217] 
+Reading package lists...[2025-09-10 18:48:36.658158] 
+Building dependency tree...[2025-09-10 18:48:36.912746] 
+Reading state information...[2025-09-10 18:48:36.913103] 
+E: Unable to locate package #
+E: Unable to locate package No
+E: Unable to locate package extra
+E: Unable to locate package system
+E: Unable to locate package packages
+E: Unable to locate package required
+E: Unable to locate package for
+E: Unable to locate package Streamlit
+[18:48:38] ❗️ installer returned a non-zero exit code
+[18:48:38] ❗️ Error during processing dependencies! Please fix the error and push an update, or try restarting the app.
