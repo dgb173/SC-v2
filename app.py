@@ -10,7 +10,7 @@ def install_playwright_browsers():
     with st.spinner("Instalando navegadores para Playwright (esto solo ocurre una vez)..."):
         try:
             # Usamos python -m para ser más robustos
-            subprocess.run([sys.executable, "-m", "playwright", "install", "--with-deps"], check=True)
+            subprocess.run([sys.executable, "-m", "playwright", "install"], check=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             st.error("Error al instalar los navegadores de Playwright.")
             st.exception(e)
