@@ -132,7 +132,71 @@ with st.expander("ℹ️ Cómo usar esta aplicación", expanded=False):
 if 'selected_match_id' not in st.session_state:
     st.session_state.selected_match_id = None
 
-# --- VISTA DE ANÁLISIS DE PARTIDO ---\nif st.session_state.selected_match_id:\n    match_id = st.session_state.selected_match_id\n    \n    if st.button(\"⬅️ Volver a la lista de partidos\"):\n        st.session_state.selected_match_id = None\n        st.rerun()\n\n    with st.spinner(\"Obteniendo y analizando datos del partido...\"):\n        try:\n            datos_partido = obtener_datos_completos_partido(match_id)\n            \n            if not datos_partido or \"error\" in datos_partido:\n                st.error(f\"Error al obtener datos para el partido {match_id}: {datos_partido.get('error', 'Error desconocido')}\")\n                st.info(\"Esto puede deberse a problemas de conexión o a que el partido ya no está disponible.\")\n            else:\n                # --- RENDERIZADO DE LA NUEVA VISTA (INSPIRADA EN estudio.py) ---\n                home_name = datos_partido.get(\"home_name\", \"Local\")\n                away_name = datos_partido.get(\"away_name\", \"Visitante\")\n                \n                st.markdown(f\"<h1 class='main-title'>Análisis de Partido Avanzado</h1>\", unsafe_allow_html=True)\n                st.markdown(f\"<p class='sub-title'><span class='home-color'>{home_name}</span> vs <span class='away-color'>{away_name}</span></p>\", unsafe_allow_html=True)\n\n                # Extraer datos para la UI\n                main_match_odds_data = datos_partido.get(\"main_match_odds\", {})\n                h2h_data = datos_partido.get(\"h2h_stadium\", {})\n\n                # Generar y mostrar el análisis de mercado\n                try:\n                    analisis_mercado_html = generar_analisis_completo_mercado(\n                        main_match_odds_data,\n                        h2h_data, \n                        home_name, \n                        away_name,\n                        format_ah_as_decimal_string_of, # Pasamos las funciones helper\n                        parse_ah_to_number_of\n                    )\n                    st.markdown(analisis_mercado_html, unsafe_allow_html=True)\n                except Exception as e:\n                    st.error(f\"Error al generar el análisis de mercado: {str(e)}\")\n                    st.write(\"Datos disponibles:\", main_match_odds_data, h2h_data)\n\n                # Aquí puedes añadir más secciones de la UI de estudio.py si lo deseas\n                # Por ejemplo, la sección de clasificación:\n                with st.expander(\"📊 Clasificación en Liga\", expanded=True):\n                    home_standings = datos_partido.get(\"home_standings\", {})\n                    away_standings = datos_partido.get(\"away_standings\", {})\n                    scol1, scol2 = st.columns(2)\n                    \n                    def display_standings(col, data, team_color_class):\n                        with col:\n                            st.markdown(f\"<h4 class='card-title' style='text-align: center;'><span class='{team_color_class}'>{data.get('name','N/A')}</span></h4>\", unsafe_allow_html=True)\n                            if data and data.get('ranking') != 'N/A':\n                                st.markdown(f\"<p style='text-align: center;'><strong>Posición:</strong> <span class='data-highlight'>{data['ranking']}</span></p>\", unsafe_allow_html=True)\n                            else:\n                                st.info(\"Datos de clasificación no disponibles.\")\n                    \n                    display_standings(scol1, home_standings, \"home-color\")\n                    display_standings(scol2, away_standings, \"away-color\")\n\n                with st.expander(\"Ver todos los datos extraídos (JSON)\"):\n                    st.json(datos_partido)\n        except Exception as e:\n            st.error(f\"Error inesperado al analizar el partido: {str(e)}\")\n            st.info(\"Por favor, inténtalo de nuevo más tarde o selecciona otro partido.\")
+# --- VISTA DE ANÁLISIS DE PARTIDO ---
+if st.session_state.selected_match_id:
+    match_id = st.session_state.selected_match_id
+    
+    if st.button("⬅️ Volver a la lista de partidos"):
+        st.session_state.selected_match_id = None
+        st.rerun()
+
+    with st.spinner("Obteniendo y analizando datos del partido..."):
+        try:
+            datos_partido = obtener_datos_completos_partido(match_id)
+            
+            if not datos_partido or "error" in datos_partido:
+                st.error(f"Error al obtener datos para el partido {match_id}: {datos_partido.get('error', 'Error desconocido')}")
+                st.info("Esto puede deberse a problemas de conexión o a que el partido ya no está disponible.")
+            else:
+                # --- RENDERIZADO DE LA NUEVA VISTA (INSPIRADA EN estudio.py) ---
+                home_name = datos_partido.get("home_name", "Local")
+                away_name = datos_partido.get("away_name", "Visitante")
+                
+                st.markdown(f"<h1 class='main-title'>Análisis de Partido Avanzado</h1>", unsafe_allow_html=True)
+                st.markdown(f"<p class='sub-title'><span class='home-color'>{home_name}</span> vs <span class='away-color'>{away_name}</span></p>", unsafe_allow_html=True)
+
+                # Extraer datos para la UI
+                main_match_odds_data = datos_partido.get("main_match_odds", {})
+                h2h_data = datos_partido.get("h2h_stadium", {})
+
+                # Generar y mostrar el análisis de mercado
+                try:
+                    analisis_mercado_html = generar_analisis_completo_mercado(
+                        main_match_odds_data,
+                        h2h_data, 
+                        home_name, 
+                        away_name,
+                        format_ah_as_decimal_string_of, # Pasamos las funciones helper
+                        parse_ah_to_number_of
+                    )
+                    st.markdown(analisis_mercado_html, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error al generar el análisis de mercado: {str(e)}")
+                    st.write("Datos disponibles:", main_match_odds_data, h2h_data)
+
+                # Aquí puedes añadir más secciones de la UI de estudio.py si lo deseas
+                # Por ejemplo, la sección de clasificación:
+                with st.expander("📊 Clasificación en Liga", expanded=True):
+                    home_standings = datos_partido.get("home_standings", {})
+                    away_standings = datos_partido.get("away_standings", {})
+                    scol1, scol2 = st.columns(2)
+                    
+                    def display_standings(col, data, team_color_class):
+                        with col:
+                            st.markdown(f"<h4 class='card-title' style='text-align: center;'><span class='{team_color_class}'>{data.get('name','N/A')}</span></h4>", unsafe_allow_html=True)
+                            if data and data.get('ranking') != 'N/A':
+                                st.markdown(f"<p style='text-align: center;'><strong>Posición:</strong> <span class='data-highlight'>{data['ranking']}</span></p>", unsafe_allow_html=True)
+                            else:
+                                st.info("Datos de clasificación no disponibles.")
+                    
+                    display_standings(scol1, home_standings, "home-color")
+                    display_standings(scol2, away_standings, "away-color")
+
+                with st.expander("Ver todos los datos extraídos (JSON)"):
+                    st.json(datos_partido)
+        except Exception as e:
+            st.error(f"Error inesperado al analizar el partido: {str(e)}")
+            st.info("Por favor, inténtalo de nuevo más tarde o selecciona otro partido.")
 
 # --- VISTA DE LISTA DE PARTIDOS ---
 else:

@@ -3,50 +3,10 @@
 import re
 import math
 
+# Import functions from utils instead of duplicating them
+from modules.utils import check_handicap_cover, check_goal_line_cover, parse_ah_to_number_of, format_ah_as_decimal_string_of
+
 # Funciones extraídas de estudio.py para el análisis de mercado
-
-def check_handicap_cover(resultado_raw: str, ah_line_num: float, favorite_team_name: str, home_team_in_h2h: str, away_team_in_h2h: str, main_home_team_name: str):
-    try:
-        goles_h, goles_a = map(int, resultado_raw.split('-'))
-        if ah_line_num == 0.0:
-            if main_home_team_name.lower() == home_team_in_h2h.lower():
-                if goles_h > goles_a: return ("CUBIERTO", True)
-                elif goles_a > goles_h: return ("NO CUBIERTO", False)
-                else: return ("PUSH", None)
-            else:
-                if goles_a > goles_h: return ("CUBIERTO", True)
-                elif goles_h > goles_a: return ("NO CUBIERTO", False)
-                else: return ("PUSH", None)
-        
-        if favorite_team_name.lower() == home_team_in_h2h.lower():
-            favorite_margin = goles_h - goles_a
-        elif favorite_team_name.lower() == away_team_in_h2h.lower():
-            favorite_margin = goles_a - goles_h
-        else:
-            return ("indeterminado", None)
-        
-        if favorite_margin - abs(ah_line_num) > 0.05:
-            return ("CUBIERTO", True)
-        elif favorite_margin - abs(ah_line_num) < -0.05:
-            return ("NO CUBIERTO", False)
-        else:
-            return ("PUSH", None)
-
-    except (ValueError, TypeError, AttributeError):
-        return ("indeterminado", None)
-
-def check_goal_line_cover(resultado_raw: str, goal_line_num: float):
-    try:
-        goles_h, goles_a = map(int, resultado_raw.split('-'))
-        total_goles = goles_h + goles_a
-        if total_goles > goal_line_num:
-            return ("SUPERADA (Over)", True)
-        elif total_goles < goal_line_num:
-            return (f"<span style='color: red; font-weight: bold;'>NO SUPERADA (UNDER) </span>", False)
-        else:
-            return ("PUSH (Igual)", None)
-    except (ValueError, TypeError):
-        return ("indeterminado", None)
 
 def _analizar_precedente_handicap(precedente_data, ah_actual_num, favorito_actual_name, main_home_team_name, format_ah_func, parse_ah_func):
     res_raw = precedente_data.get('res_raw')
@@ -117,7 +77,7 @@ def _analizar_precedente_goles(precedente_data, goles_actual_num):
     except (ValueError, TypeError):
         return "<li><span class='score-value'>Goles:</span> No se pudo procesar el resultado del precedente.</li>"
 
-def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func, parse_ah_func):
+def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func=None, parse_ah_func=None):
     ah_actual_str = format_ah_func(main_odds.get('ah_linea_raw', '-'))
     ah_actual_num = parse_ah_func(ah_actual_str)
     goles_actual_num = parse_ah_func(main_odds.get('goals_linea_raw', '-'))

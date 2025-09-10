@@ -116,7 +116,7 @@ async def obtener_datos_completos_partido_async(match_id: str):
             comparacion_local = comparar_lineas_handicap_recientes(soup_completo, home_name, current_ah_line, True)
             comparacion_visitante = comparar_lineas_handicap_recientes(soup_completo, away_name, current_ah_line, False)
 
-        datos["market_analysis_html"] = generar_analisis_completo_mercado(main_match_odds_data, h2h_data, home_name, away_name)
+        datos["market_analysis_html"] = generar_analisis_completo_mercado(main_match_odds_data, h2h_data, home_name, away_name, format_ah_as_decimal_string_of, parse_ah_to_number_of)
         datos["recent_performance_analysis_html"] = generar_analisis_rendimiento_reciente(home_name, away_name, rendimiento_local, rendimiento_visitante, current_ah_line, comparacion_local, comparacion_visitante)
         
         st.success("🎉 ¡Análisis finalizado con éxito!")
@@ -193,9 +193,10 @@ def extract_h2h_data_of(soup, home_name, away_name, league_id=None):
 def _analizar_precedente_handicap(precedente_data, ah_actual_num, favorito_actual_name, main_home_team_name):
     return ""
 
-# Import the function from the correct module
+# Import the function from the correct module for use in this module
 from modules.analisis_avanzado import generar_analisis_completo_mercado as _generar_analisis_completo_mercado
 
+# Create a wrapper function that matches the expected signature for external calls
 def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name, format_ah_func=None, parse_ah_func=None):
     # If the additional functions aren't provided, use the ones from utils
     if format_ah_func is None:
