@@ -1,22 +1,19 @@
+
 # modules/estudio_scraper.py
 import streamlit as st
 import time
 import re
 import math
 import pandas as pd
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Selenium imports
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+# --- LIBRERÍA DE AUTOMATIZACIÓN ÚNICA: PLAYWRIGHT ---
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 # Importaciones de módulos locales
 from modules.analisis_avanzado import generar_analisis_comparativas_indirectas
@@ -30,70 +27,68 @@ from modules.analisis_rendimiento import generar_analisis_rendimiento_reciente, 
 from modules.utils import parse_ah_to_number_of, format_ah_as_decimal_string_of, check_handicap_cover, check_goal_line_cover, get_match_details_from_row_of
 
 BASE_URL_OF = "https://live18.nowgoal25.com"
-SELENIUM_TIMEOUT_SECONDS_OF = 20 # Aumentado ligeramente
+PLAYWRIGHT_TIMEOUT = 25000 # Milisegundos
 
-# --- NUEVO GESTOR DE DRIVER CON CACHÉ DE RECURSOS ---
-@st.cache_resource(ttl=3600) # Cachear el driver por 1 hora
-def get_selenium_driver():
+# --- GESTOR DE NAVEGADOR PLAYWRIGHT CON CACHÉ DE RECURSOS ---
+@st.cache_resource(ttl=3600)
+async def get_playwright_browser():
     """
-    Crea, gestiona y cachea una única instancia del driver de Selenium.
-    Streamlit se encarga de cerrarlo automáticamente cuando la sesión termina.
+    Crea, gestiona y cachea una única instancia del navegador de Playwright.
     """
-    st.info("⚙️ Creando una nueva instancia del navegador virtual (esto ocurre solo una vez por sesión)...")
-    options = ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-setuid-sandbox")
-    options.add_argument('--single-process')
-    options.add_argument("--disable-blink-features=AutomationControlled")
+    st.info("⚙️ Creando una nueva instancia del navegador virtual (Playwright)...")
+    try:
+        p = await async_playwright().start()
+        browser = await p.chromium.launch(headless=True)
+        st.success("✅ Instancia del navegador creada.")
+        # Devolvemos el objeto del navegador, no el de playwright
+        return browser
+    except Exception as e:
+        st.error(f"No se pudo iniciar Playwright: {e}")
+        st.stop()
 
-    driver = webdriver.Chrome(options=options)
-    yield driver # El driver se entrega aquí
-    # --- Limpieza --- 
-    # Este código se ejecuta cuando el recurso se libera (ej: fin de sesión)
-    st.info("🧹 Cerrando la instancia del navegador virtual.")
-    driver.quit()
-
-# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (REFACTORIZADA) ---
+# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (REESCRITA CON PLAYWRIGHT) ---
 def obtener_datos_completos_partido(match_id: str):
+    # Esta función ahora es un wrapper síncrono para la función asíncrona
+    return asyncio.run(obtener_datos_completos_partido_async(match_id))
+
+async def obtener_datos_completos_partido_async(match_id: str):
     if not match_id or not match_id.isdigit():
         return {"error": "ID de partido inválido."}
 
     st.info(f"Iniciando análisis para el partido ID: {match_id}...")
-    
+    page = None
+    context = None
     try:
-        # Obtenemos el driver compartido desde el gestor de recursos
-        driver = get_selenium_driver()
+        browser = await get_playwright_browser()
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        )
+        page = await context.new_page()
         
         main_page_url = f"{BASE_URL_OF}/match/h2h-{match_id}"
         datos = {"match_id": match_id}
 
-        st.info(f"🌐 Navegando a la página del partido (usando navegador compartido)...")
-        driver.get(main_page_url)
+        st.info(f"🌐 Navegando a la página del partido (usando Playwright)...")
+        await page.goto(main_page_url, timeout=PLAYWRIGHT_TIMEOUT, wait_until="domcontentloaded")
         
-        WebDriverWait(driver, SELENIUM_TIMEOUT_SECONDS_OF).until(
-            EC.presence_of_element_located((By.ID, "table_v1"))
-        )
+        await page.wait_for_selector("#table_v1", timeout=PLAYWRIGHT_TIMEOUT)
         st.success("✅ Página principal cargada.")
 
         st.info("🔍 Ajustando filtros de historial a 'All'...")
         for select_id in ["hSelect_1", "hSelect_2", "hSelect_3"]:
             try:
-                select_element = Select(WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, select_id))))
-                select_element.select_by_value("0")
-            except TimeoutException:
+                await page.select_option(f"#{select_id}", "0", timeout=5000)
+            except PlaywrightTimeoutError:
                 st.warning(f"No se encontró el filtro '{select_id}', continuando sin él.")
                 continue
         
-        time.sleep(2)
-        soup_completo = BeautifulSoup(driver.page_source, "lxml")
+        await page.wait_for_timeout(2000) # Espera para que el DOM se actualice
+        
+        html_content = await page.content()
+        soup_completo = BeautifulSoup(html_content, "lxml")
         st.success("📄 Contenido de la página parseado.")
 
+        # El resto de la lógica de extracción y análisis es la misma
         st.info("📊 Extrayendo datos primarios (equipos, liga...).")
         home_id, away_id, league_id, home_name, away_name, league_name = get_team_league_info_from_script_of(soup_completo)
         if not home_name or not away_name or home_name == "N/A":
@@ -129,16 +124,18 @@ def obtener_datos_completos_partido(match_id: str):
         st.success("🎉 ¡Análisis finalizado con éxito!")
         return datos
 
-    except TimeoutException:
-        st.error("Error de Timeout: La página tardó demasiado en responder.")
-        return {"error": "Timeout durante el scraping."}
-    except WebDriverException as e:
-        st.error(f"Error de WebDriver: Hubo un problema con el navegador virtual. Mensaje: {e}")
-        return {"error": f"Error de Selenium/WebDriver: {e}"}
+    except PlaywrightTimeoutError:
+        st.error("Error de Timeout: La página tardó demasiado en responder o un elemento no se encontró a tiempo.")
+        return {"error": "Timeout durante el scraping con Playwright."}
     except Exception as e:
-        st.error(f"Ocurrió un error inesperado durante el scraping: {e}")
+        st.error(f"Ocurrió un error inesperado durante el scraping con Playwright: {e}")
         return {"error": f"Error inesperado en el scraper: {e}"}
-    # Ya no se necesita el bloque finally para cerrar el driver aquí
+    finally:
+        if page:
+            await page.close()
+        if context:
+            await context.close()
+        # No cerramos el browser, ya que es un recurso compartido gestionado por Streamlit
 
 # ... (El resto de funciones auxiliares permanecen igual)
 
