@@ -1,3 +1,4 @@
+
 # modules/estudio_scraper.py
 import streamlit as st
 import time
@@ -28,23 +29,24 @@ from modules.utils import parse_ah_to_number_of, format_ah_as_decimal_string_of,
 BASE_URL_OF = "https://live18.nowgoal25.com"
 PLAYWRIGHT_TIMEOUT = 25000 # Milisegundos
 
-# --- GESTOR DE NAVEGADOR PLAYWRIGHT CON CACHÉ DE RECURSOS ---
-@st.cache_resource(ttl=3600) # Cachear el driver por 1 hora
+# --- GESTOR DE NAVEGADOR PLAYWRIGHT (AJUSTADO PARA LA CACHÉ) ---
+@st.cache_resource(ttl=3600) # Cachear el browser por 1 hora
 async def get_playwright_browser():
     """
-    Crea, gestiona y cachea una única instancia del navegador de Playwright.
+    Crea y devuelve una instancia del navegador. La caché de Streamlit
+    evitará que se re-ejecute la corutina, devolviendo el objeto browser cacheado.
     """
     st.info("⚙️ Creando una nueva instancia del navegador virtual (Playwright)...")
     try:
         p = await async_playwright().start()
         browser = await p.chromium.launch(headless=True)
         st.success("✅ Instancia del navegador creada.")
-        return browser
+        return browser # Usamos return en lugar de yield para evitar el error de corutina
     except Exception as e:
         st.error(f"No se pudo iniciar Playwright: {e}")
         st.stop()
 
-# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN (REESCRITA CON PLAYWRIGHT) ---
+# --- FUNCIÓN PRINCIPAL DE EXTRACCIÓN ---
 def obtener_datos_completos_partido(match_id: str):
     return asyncio.run(obtener_datos_completos_partido_async(match_id))
 
@@ -65,7 +67,7 @@ async def obtener_datos_completos_partido_async(match_id: str):
         main_page_url = f"{BASE_URL_OF}/match/h2h-{match_id}"
         datos = {"match_id": match_id}
 
-        st.info(f"🌐 Navegando a la página del partido (usando Playwright)...")
+        st.info(f"🌐 Navegando a la página del partido...")
         await page.goto(main_page_url, timeout=PLAYWRIGHT_TIMEOUT, wait_until="domcontentloaded")
         
         await page.wait_for_selector("#table_v1", timeout=PLAYWRIGHT_TIMEOUT)
@@ -131,6 +133,7 @@ async def obtener_datos_completos_partido_async(match_id: str):
             await page.close()
         if context:
             await context.close()
+
 
 def get_team_league_info_from_script_of(soup):
     script_tag = soup.find("script", string=re.compile(r"var _matchInfo = "))
