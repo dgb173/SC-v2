@@ -20,9 +20,6 @@
         .stat-table .stat-value-home { font-weight: bold; text-align: left; }
         .stat-table .stat-value-away { font-weight: bold; text-align: right; }
     </style>
-    <!-- Log de inicio de renderizado -->
-    {{ "".join(["[TEMPLATE_LOG] Inicio renderizado de estudio.html
-"]) | default("") }}
 </head>
 <body>
 <div class="container my-4">
@@ -106,7 +103,7 @@
                 {% if data.last_home_match.details %}
                     {% set res = data.last_home_match.details %}
                     <p class="text-center"><span class="home-color">{{ res.home_team }}</span> <span class="score-value">{{ res.score.replace(':', ' : ') }}</span> <span class="away-color">{{ res.away_team }}</span></p>
-                    <p><b>AH:</b> <span class="ah-value">{{ format_ah(res.handicap_line_raw) }}</span> | <b>O/U:</b> <span class="ah-value">{{ res.ou_line_raw }}</span></p>
+                    <p><b>AH:</b> <span class="ah-value">{{ format_ah(res.handicap_line_raw) }}</span></p>
                     {% if data.last_home_match.stats is not none and not data.last_home_match.stats.empty %}
                         <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
                         {# === CORRECCIÓN AQUÍ === #}
@@ -125,7 +122,7 @@
                 {% if data.last_away_match.details %}
                     {% set res = data.last_away_match.details %}
                     <p class="text-center"><span class="home-color">{{ res.home_team }}</span> <span class="score-value">{{ res.score.replace(':', ' : ') }}</span> <span class="away-color">{{ res.away_team }}</span></p>
-                    <p><b>AH:</b> <span class="ah-value">{{ format_ah(res.handicap_line_raw) }}</span> | <b>O/U:</b> <span class="ah-value">{{ res.ou_line_raw }}</span></p>
+                    <p><b>AH:</b> <span class="ah-value">{{ format_ah(res.handicap_line_raw) }}</span></p>
                     {% if data.last_away_match.stats is not none and not data.last_away_match.stats.empty %}
                          <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
                         {# === CORRECCIÓN AQUÍ === #}
@@ -144,7 +141,7 @@
                 {% if data.h2h_col3.details and data.h2h_col3.details.status == 'found' %}
                     {% set res = data.h2h_col3.details %}
                     <p class="text-center"><span class="home-color">{{ res.h2h_home_team_name }}</span> <span class="score-value">{{ res.goles_home }}:{{ res.goles_away }}</span> <span class="away-color">{{ res.h2h_away_team_name }}</span></p>
-                    <p><b>AH:</b> <span class="ah-value">{{ format_ah(res.handicap) }}</span> | <b>O/U:</b> <span class="ah-value">{{ res.ou_line }}</span></p>
+                    <p><b>AH:</b> <span class="ah-value">{{ format_ah(res.handicap) }}</span></p>
                     {% if data.h2h_col3.stats is not none and not data.h2h_col3.stats.empty %}
                         <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
                         {# === CORRECCIÓN AQUÍ === #}
@@ -171,7 +168,7 @@
                 {% if data.comp_L_vs_UV_A.details %}
                     {% set res = data.comp_L_vs_UV_A.details %}
                     <p>⚽ <b>Res:</b> <span class="score-value">{{ res.score.replace(':', ' : ') }}</span> ({{ res.home_team }} vs {{ res.away_team }})</p>
-                    <p>⚖️ <b>AH:</b> <span class="ah-value">{{ format_ah(res.ah_line) }}</span> | <b>O/U:</b> <span class="ah-value">{{ res.ou_line }}</span></p>
+                    <p>⚖️ <b>AH:</b> <span class="ah-value">{{ format_ah(res.ah_line) }}</span></p>
                     <p>🏟️ <b>Localía de '{{ data.home_name }}':</b> <span class="home-color">{{ res.localia }}</span></p>
                     {% if data.comp_L_vs_UV_A.stats is not none and not data.comp_L_vs_UV_A.stats.empty %}
                         <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
@@ -191,7 +188,7 @@
                 {% if data.comp_V_vs_UL_H.details %}
                     {% set res = data.comp_V_vs_UL_H.details %}
                     <p>⚽ <b>Res:</b> <span class="score-value">{{ res.score.replace(':', ' : ') }}</span> ({{ res.home_team }} vs {{ res.away_team }})</p>
-                    <p>⚖️ <b>AH:</b> <span class="ah-value">{{ format_ah(res.ah_line) }}</span> | <b>O/U:</b> <span class="ah-value">{{ res.ou_line }}</span></p>
+                    <p>⚖️ <b>AH:</b> <span class="ah-value">{{ format_ah(res.ah_line) }}</span></p>
                     <p>🏟️ <b>Localía de '{{ data.away_name }}':</b> <span class="away-color">{{ res.localia }}</span></p>
                     {% if data.comp_V_vs_UL_H.stats is not none and not data.comp_V_vs_UL_H.stats.empty %}
                         <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
@@ -206,12 +203,6 @@
 
     <!-- ANÁLISIS CONTRA RIVAL DEL RIVAL - Versión Gráfica -->
     {% include 'analisis_rival_rival.html' %}
-    
-    <!-- ANÁLISIS DE RENDIMIENTO RECIENTE VS HISTÓRICO -->
-    {% include 'analisis_rendimiento_reciente.html' %}
-    
-    <!-- ANÁLISIS H2H INDIRECTO -->
-    {% include 'analisis_h2h_indirecto.html' %}
     
     <!-- ANÁLISIS H2H DIRECTO - Versión Gráfica -->
     {% include 'analisis_h2h_directo.html' %}
@@ -235,7 +226,7 @@
                         <span class="score-value">{{ res.res1.replace(':', ' : ') }}</span>
                         <span class="away-color">{{ data.away_name }}</span>
                     </p>
-                    <p class="text-center"><b>Handicap Inicial:</b> <span class="ah-value">{{ res.ah1 }}</span> | <b>O/U Inicial:</b> <span class="ah-value">{{ res.ou1 }}</span></p>
+                    <p class="text-center"><b>Handicap Inicial:</b> <span class="ah-value">{{ res.ah1 }}</span></p>
                     {% if data.h2h_stadium.stats is not none and not data.h2h_stadium.stats.empty %}
                         <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
                         {% set stats = data.h2h_stadium.stats %}
@@ -256,7 +247,7 @@
                         <span class="score-value">{{ res.res6.replace(':', ' : ') }}</span>
                         <span class="away-color">{{ res.h2h_gen_away }}</span>
                     </p>
-                    <p class="text-center"><b>Handicap Inicial:</b> <span class="ah-value">{{ res.ah6 }}</span> | <b>O/U Inicial:</b> <span class="ah-value">{{ res.ou6 }}</span></p>
+                    <p class="text-center"><b>Handicap Inicial:</b> <span class="ah-value">{{ res.ah6 }}</span></p>
                     {% if data.h2h_general.stats is not none and not data.h2h_general.stats.empty %}
                         <h6 class="mt-3 text-muted">👁️ Est. Progresión</h6>
                         {% set stats = data.h2h_general.stats %}

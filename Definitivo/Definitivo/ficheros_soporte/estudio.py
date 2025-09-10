@@ -474,16 +474,12 @@ def get_h2h_details_for_original_logic_of(driver, key_match_id, rival_a_id, riva
             g_h, g_a = score.split("-", 1)
             tds = row.find_all("td")
             handicap_raw = "N/A"
-            ou_line_raw = "N/A" # Línea de Goles
-            if len(tds) > 14: # Columna 15 para la línea de handicap
-                cell = tds[14]
+            if len(tds) > 11:
+                cell = tds[11]
                 handicap_raw = (cell.get("data-o") or cell.text).strip() or "N/A"
-            if len(tds) > 19: # Columna 20 para la línea de goles
-                cell = tds[19]
-                ou_line_raw = (cell.get("data-o") or cell.text).strip() or "N/A"
             return {
                 "status": "found", "goles_home": g_h.strip(), "goles_away": g_a.strip(),
-                "handicap": handicap_raw, "ou_line": ou_line_raw, "match_id": row.get('index'),
+                "handicap": handicap_raw, "match_id": row.get('index'),
                 "h2h_home_team_name": links[0].text.strip(), "h2h_away_team_name": links[1].text.strip()
             }
     return {"status": "not_found", "resultado": f"H2H directo no encontrado para {rival_a_name} vs {rival_b_name}."}

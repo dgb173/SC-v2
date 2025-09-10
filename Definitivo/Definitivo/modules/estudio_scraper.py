@@ -3,8 +3,7 @@ from modules.analisis_avanzado import generar_analisis_comparativas_indirectas
 from modules.analisis_reciente import analizar_rendimiento_reciente_con_handicap, comparar_lineas_handicap_recientes
 from modules.analisis_rivales import analizar_rivales_comunes, analizar_contra_rival_del_rival
 from modules.funciones_resumen import generar_resumen_rendimiento_reciente
-from modules.funciones_auxiliares import _calcular_estadisticas_contra_rival, _analizar_over_under, _analizar_ah_cubierto, _analizar_desempeno_casa_fuera, _contar_victorias_h2h, _analizar_over_under_h2h, _contar_over_h2h, _contar_victorias_h2h_general
-from modules.analisis_rendimiento import generar_analisis_rendimiento_reciente, generar_analisis_h2h_indirecto
+from modules.funciones_auxiliares import _calcular_estadisticas_contra_rival, _analizar_over_under, _analizar_ah_cubierto, _analizar_desempeno_casa_fuera
 import time
 import re
 import math
@@ -240,9 +239,8 @@ def generar_analisis_completo_mercado(main_odds, h2h_data, home_name, away_name)
 def get_match_details_from_row_of(row_element, score_class_selector='score', source_table_type='h2h'):
     try:
         cells = row_element.find_all('td')
-        # Índices correctos basados en el análisis del HTML real
-        home_idx, score_idx, away_idx, ah_line_idx, ou_line_idx = 2, 3, 4, 14, 19
-        if len(cells) <= max(ah_line_idx, ou_line_idx): return None
+        home_idx, score_idx, away_idx, ah_idx = 2, 3, 4, 11
+        if len(cells) <= ah_idx: return None
         date_span = cells[1].find('span', attrs={'name': 'timeData'})
         date_txt = date_span.get_text(strip=True) if date_span else ''
         def get_cell_txt(idx):
@@ -255,26 +253,16 @@ def get_match_details_from_row_of(row_element, score_class_selector='score', sou
         score_raw_text = (score_span.get_text(strip=True) if score_span else score_cell.get_text(strip=True)) or ''
         m = re.search(r'(\d+)\s*-\s*(\d+)', score_raw_text)
         score_raw, score_fmt = (f"{m.group(1)}-{m.group(2)}", f"{m.group(1)}:{m.group(2)}") if m else ('?-?', '?:?')
-        ah_cell = cells[ah_line_idx] # Columna 15 (índice 14)
+        ah_cell = cells[ah_idx]
         ah_line_raw = (ah_cell.get('data-o') or ah_cell.text).strip()
         ah_line_fmt = format_ah_as_decimal_string_of(ah_line_raw) if ah_line_raw not in ['', '-'] else '-'
-        
-        # Extracción de la línea de Goles (Over/Under) desde la columna 20 (índice 19)
-        ou_line_raw = "-" # Valor por defecto
-        if len(cells) > ou_line_idx:
-            ou_line_cell = cells[ou_line_idx] # Columna 20 (índice 19)
-            # La línea de goles está en el atributo 'data-o' o como texto
-            ou_line_raw = (ou_line_cell.get('data-o') or ou_line_cell.text).strip()
-            
         return {
             'date': date_txt, 'home': home, 'away': away, 'score': score_fmt,
             'score_raw': score_raw, 'ahLine': ah_line_fmt, 'ahLine_raw': ah_line_raw or '-',
-            'ouLine_raw': ou_line_raw, # Línea de Goles (Over/Under) 
             'matchIndex': row_element.get('index'), 'vs': row_element.get('vs'),
             'league_id_hist': row_element.get('name')
         }
-    except Exception as e:
-        print(f"Error en get_match_details_from_row_of: {e}")
+    except Exception:
         return None
 
 def _colorear_stats(val1_str, val2_str):
@@ -414,9 +402,7 @@ def extract_last_match_in_league_of(soup, table_id, team_name, league_id, is_hom
     return {
         "date": last_match.get('date', 'N/A'), "home_team": last_match.get('home'),
         "away_team": last_match.get('away'), "score": last_match.get('score_raw', 'N/A').replace('-', ':'),
-        "handicap_line_raw": last_match.get('ahLine_raw', 'N/A'),
-        "ou_line_raw": last_match.get('ouLine_raw', 'N/A'), # Línea de Goles
-        "match_id": last_match.get('matchIndex')
+        "handicap_line_raw": last_match.get('ahLine_raw', 'N/A'), "match_id": last_match.get('matchIndex')
     }
 
 def extract_bet365_initial_odds_of(soup):
@@ -527,50 +513,21 @@ def extract_over_under_stats_from_div_of(soup, team_type: str):
     return default_stats
 
 def extract_h2h_data_of(soup, home_name, away_name, league_id=None):
-    results = {
-        'ah1': '-', 'res1': '?:?', 'res1_raw': '?-?', 'ou1': '-', 'match1_id': None,
-        'ah6': '-', 'res6': '?:?', 'res6_raw': '?-?', 'ou6': '-', 'match6_id': None,
-        'h2h_gen_home': "Local (H2H Gen)", 'h2h_gen_away': "Visitante (H2H Gen)"
-    }
-    if not soup or not home_name or not away_name or not (h2h_table := soup.find("table", id="table_v3")):
-        return results
-
+    results = {'ah1': '-', 'res1': '?:?', 'res1_raw': '?-?', 'match1_id': None, 'ah6': '-', 'res6': '?:?', 'res6_raw': '?-?', 'match6_id': None, 'h2h_gen_home': "Local (H2H Gen)", 'h2h_gen_away': "Visitante (H2H Gen)"}
+    if not soup or not home_name or not away_name or not (h2h_table := soup.find("table", id="table_v3")): return results
     all_matches = []
     for r in h2h_table.find_all("tr", id=re.compile(r"tr3_\d+")):
-        # Usamos la función centralizada para extraer todos los detalles
         if (d := get_match_details_from_row_of(r, score_class_selector='fscore_3', source_table_type='h2h')):
             if not league_id or (d.get('league_id_hist') and d.get('league_id_hist') == str(league_id)):
                 all_matches.append(d)
-
-    if not all_matches:
-        return results
-
+    if not all_matches: return results
     all_matches.sort(key=lambda x: _parse_date_ddmmyyyy(x.get('date', '')), reverse=True)
-    
-    # Partido más reciente (para H2H General)
     most_recent = all_matches[0]
-    results.update({
-        'ah6': most_recent.get('ahLine', '-'),
-        'ou6': most_recent.get('ouLine_raw', '-'), # Línea de Goles
-        'res6': most_recent.get('score', '?:?'),
-        'res6_raw': most_recent.get('score_raw', '?-?'),
-        'match6_id': most_recent.get('matchIndex'),
-        'h2h_gen_home': most_recent.get('home'),
-        'h2h_gen_away': most_recent.get('away')
-    })
-
-    # Buscar el partido específico en este estadio
+    results.update({'ah6': most_recent.get('ahLine', '-'), 'res6': most_recent.get('score', '?:?'), 'res6_raw': most_recent.get('score_raw', '?-?'), 'match6_id': most_recent.get('matchIndex'), 'h2h_gen_home': most_recent.get('home'), 'h2h_gen_away': most_recent.get('away')})
     for d in all_matches:
         if d['home'].lower() == home_name.lower() and d['away'].lower() == away_name.lower():
-            results.update({
-                'ah1': d.get('ahLine', '-'),
-                'ou1': d.get('ouLine_raw', '-'), # Línea de Goles
-                'res1': d.get('score', '?:?'),
-                'res1_raw': d.get('score_raw', '?-?'),
-                'match1_id': d.get('matchIndex')
-            })
+            results.update({'ah1': d.get('ahLine', '-'), 'res1': d.get('score', '?:?'), 'res1_raw': d.get('score_raw', '?-?'), 'match1_id': d.get('matchIndex')})
             break
-
     return results
 
 def extract_comparative_match_of(soup, table_id, main_team, opponent, league_id, is_home_table):
@@ -582,15 +539,7 @@ def extract_comparative_match_of(soup, table_id, main_team, opponent, league_id,
         h, a = details.get('home','').lower(), details.get('away','').lower()
         main, opp = main_team.lower(), opponent.lower()
         if (main == h and opp == a) or (main == a and opp == h):
-            return {
-                "score": details.get('score', '?:?'), 
-                "ah_line": details.get('ahLine', '-'), 
-                "ou_line": details.get('ouLine_raw', '-'), # Línea de Goles
-                "localia": 'H' if main == h else 'A', 
-                "home_team": details.get('home'), 
-                "away_team": details.get('away'), 
-                "match_id": details.get('matchIndex')
-            }
+            return {"score": details.get('score', '?:?'), "ah_line": details.get('ahLine', '-'), "localia": 'H' if main == h else 'A', "home_team": details.get('home'), "away_team": details.get('away'), "match_id": details.get('matchIndex')}
     return None
 
 def extract_indirect_comparison_data(soup):
@@ -678,7 +627,6 @@ def obtener_datos_completos_partido(match_id: str):
 
     try:
         # --- Carga y Parseo de la Página Principal ---
-        print(f"[LOG] Navegando a: {main_page_url}")
         driver.get(main_page_url)
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "table_v1")))
         for select_id in ["hSelect_1", "hSelect_2", "hSelect_3"]:
@@ -691,12 +639,10 @@ def obtener_datos_completos_partido(match_id: str):
         soup_completo = BeautifulSoup(driver.page_source, "lxml")
         # Cerramos el driver cuanto antes para liberar recursos
         driver.quit()
-        print("[LOG] Página cargada y parseada con BeautifulSoup. Driver cerrado.")
 
         # --- Extracción de Datos Primarios ---
         home_id, away_id, league_id, home_name, away_name, league_name = get_team_league_info_from_script_of(soup_completo)
         datos.update({"home_name": home_name, "away_name": away_name, "league_name": league_name})
-        print(f"[LOG] Equipos: {home_name} (ID: {home_id}) vs {away_name} (ID: {away_id}). Liga ID: {league_id}")
 
         # --- Recopilación de todos los datos en paralelo (donde sea posible) ---
         with ThreadPoolExecutor(max_workers=8) as executor:
@@ -725,13 +671,6 @@ def obtener_datos_completos_partido(match_id: str):
             last_home_match = future_last_home.result()
             last_away_match = future_last_away.result()
             details_h2h_col3 = future_h2h_col3.result()
-
-            print("[LOG] Datos básicos extraídos.")
-            print(f"[LOG] Cuotas principales: {main_match_odds_data}")
-            print(f"[LOG] Datos H2H: {h2h_data}")
-            print(f"[LOG] Último Local: {last_home_match}")
-            print(f"[LOG] Último Visitante: {last_away_match}")
-            print(f"[LOG] H2H Col3: {details_h2h_col3}")
 
             # --- Comparativas (dependen de los resultados anteriores) ---
             comp_L_vs_UV_A = extract_comparative_match_of(soup_completo, "table_v1", home_name, (last_away_match or {}).get('home_team'), league_id, True)
@@ -779,10 +718,6 @@ def obtener_datos_completos_partido(match_id: str):
             # Generar la nota de análisis
             datos["advanced_analysis_html"] = generar_analisis_comparativas_indirectas(indirect_comparison_data)
             
-            # --- ANÁLISIS DE MERCADO VS HISTÓRICO H2H ---
-            # Generar análisis de mercado vs histórico H2H
-            datos["market_analysis_html"] = generar_analisis_completo_mercado(main_match_odds_data, h2h_data, home_name, away_name)
-            
             # --- ANÁLISIS RECIENTE CON HANDICAP ---
             # Obtener la línea de handicap actual
             current_ah_line = parse_ah_to_number_of(main_match_odds_data.get('ah_linea_raw', '0'))
@@ -803,10 +738,6 @@ def obtener_datos_completos_partido(match_id: str):
                 comparacion_visitante = comparar_lineas_handicap_recientes(soup_completo, away_name, current_ah_line, False)
                 datos["comparacion_lineas_visitante"] = comparacion_visitante
             
-            # --- ANÁLISIS DE RENDIMIENTO RECIENTE VS HISTÓRICO ---
-            # Generar análisis de rendimiento reciente vs histórico
-            datos["recent_performance_analysis_html"] = generar_analisis_rendimiento_reciente(home_name, away_name, rendimiento_local, rendimiento_visitante, current_ah_line, comparacion_local, comparacion_visitante)
-            
             # --- ANÁLISIS DE RIVALES COMUNES ---
             rivales_comunes = analizar_rivales_comunes(soup_completo, home_name, away_name)
             datos["rivales_comunes"] = rivales_comunes
@@ -816,30 +747,16 @@ def obtener_datos_completos_partido(match_id: str):
             rival_local_rival = (last_away_match or {}).get('home_team', 'N/A')
             rival_visitante_rival = (last_home_match or {}).get('away_team', 'N/A')
             
-            # Inicializar analisis_contra_rival por si el if siguiente no se ejecuta
-            analisis_contra_rival = None 
             if rival_local_rival != 'N/A' and rival_visitante_rival != 'N/A':
                 analisis_contra_rival = analizar_contra_rival_del_rival(
                     soup_completo, home_name, away_name, rival_local_rival, rival_visitante_rival
                 )
                 datos["analisis_contra_rival_del_rival"] = analisis_contra_rival
             
-            # --- ANÁLISIS H2H INDIRECTO ---
-            # Generar análisis H2H indirecto
-            datos["h2h_indirect_analysis_html"] = generar_analisis_h2h_indirecto(soup_completo, home_name, away_name, rival_local_rival, rival_visitante_rival, analisis_contra_rival)
-            
             # --- ANÁLISIS DE RENDIMIENTO RECIENTE Y COMPARATIVAS INDIRECTAS ---
             # Generar resumen gráfico de rendimiento reciente y comparativas indirectas
             resumen_rendimiento = generar_resumen_rendimiento_reciente(soup_completo, home_name, away_name, current_ah_line)
             datos["resumen_rendimiento_reciente"] = resumen_rendimiento
-            
-            # --- ANÁLISIS DE RENDIMIENTO RECIENTE VS HISTÓRICO ---
-            # Generar análisis de rendimiento reciente vs histórico
-            datos["recent_performance_analysis_html"] = generar_analisis_rendimiento_reciente(home_name, away_name, rendimiento_local, rendimiento_visitante, current_ah_line, comparacion_local, comparacion_visitante)
-            
-            # --- ANÁLISIS H2H INDIRECTO ---
-            # Generar análisis H2H indirecto
-            datos["h2h_indirect_analysis_html"] = generar_analisis_h2h_indirecto(soup_completo, home_name, away_name, rival_local_rival, rival_visitante_rival, analisis_contra_rival)
             
             # --- FUNCIONES AUXILIARES PARA LA PLANTILLA ---
             # Añadir funciones auxiliares para el análisis gráfico
@@ -863,13 +780,10 @@ def obtener_datos_completos_partido(match_id: str):
             datos["_contar_over_h2h"] = _contar_over_h2h
             datos["_contar_victorias_h2h_general"] = _contar_victorias_h2h_general
         
-        print("[LOG] Todos los datos procesados con éxito.")
         return datos
 
     except Exception as e:
         print(f"ERROR CRÍTICO en el scraper: {e}")
-        import traceback
-        traceback.print_exc() # Esto imprimirá el stack trace completo del error
         return {"error": f"Error durante el scraping: {e}"}
     finally:
         # Asegurar que el driver se cierra correctamente incluso si ocurre un error
