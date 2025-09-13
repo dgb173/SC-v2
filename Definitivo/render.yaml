@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: definitivo
+    env: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /
+    # Render usará el CMD del Dockerfile para arrancar
+    # Puedes ajustar región/plan según necesites en el dashboard
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"

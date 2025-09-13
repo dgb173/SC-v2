@@ -1,0 +1,61 @@
+¡Entendido! Clarísimo. Te pido disculpas, la solución anterior se quedó corta. Ahora veo exactamente lo que buscas.
+
+Quieres replicar la riqueza de datos y el formato exacto de la página de análisis completo, pero inyectarlo de forma compacta y visualmente limpia debajo de la fila del partido en la página principal cuando se pulsa el ojo (👁️).
+
+Olvida el resumen simple. Quieres el análisis profundo y completo, pero bajo demanda.
+
+Aquí te explico la estrategia definitiva, sin código, para lograr exactamente eso.
+
+El Plan de Acción Correcto
+
+El problema es evidente: toda esa información tan detallada (con Hándicap, O/U, estadísticas de progresión, rivales, etc.) la consigue nuestro "detective" más poderoso, pero también el más lento (el que usa Selenium, obtener_datos_completos_partido). No podemos usar al detective rápido porque simplemente no tiene acceso a esos datos.
+
+Por lo tanto, la estrategia es: invocar al detective poderoso, pero de forma inteligente y solo cuando sea estrictamente necesario.
+
+Paso 1: El "Ojo" (👁️) se Convierte en un Botón de "Análisis Profundo a la Carta"
+
+Lo que cambia: El clic en el "ojo" ya no pedirá un "resumen rápido". Ahora activará una investigación completa en tiempo real para ese único partido.
+
+Lo que verá el usuario: Al hacer clic, aparecerá inmediatamente un mensaje tipo "Buscando análisis detallado..." con un ícono de carga. Esto es crucial para que el usuario entienda que se está realizando un trabajo complejo en segundo plano y que la espera de unos segundos es normal.
+
+Paso 2: Creamos un "Servicio de Informes Completos"
+
+Tendremos una "línea directa" (nuestra API) que, al recibir la ID de un partido, hará una sola cosa: despertar al detective poderoso (obtener_datos_completos_partido).
+
+Este detective se pondrá a trabajar (abrirá el navegador oculto, seleccionará los filtros, leerá toda la página, etc.) y, después de unos segundos, volverá con un informe masivo que contiene absolutamente todos los datos necesarios para construir la página de análisis completa.
+
+Paso 3: Filtramos y Empaquetamos solo las "Joyas de la Corona"
+
+El detective nos entregará un tesoro de datos, pero no lo enviaremos todo al navegador del usuario. Nuestro "servicio de informes" actuará como un experto:
+
+Tomará el informe masivo del detective.
+
+Extraerá con precisión únicamente los datos de las dos secciones que te interesan:
+
+⚡ Rendimiento Reciente y H2H Indirecto (con sus 3 columnas y todas sus estadísticas).
+
+🔁 Comparativas Indirectas (con sus 2 columnas y todas sus estadísticas).
+
+Empaquetará esta información seleccionada en un paquete de datos limpio y ordenado para enviarlo de vuelta al navegador.
+
+Paso 4: El Navegador Recibe el Paquete y Construye el Mosaico Final
+
+Una vez que el navegador del usuario recibe este paquete de datos específico, hará lo siguiente:
+
+Quitará el mensaje de "Buscando análisis...".
+
+Usará los datos recibidos como un plano para construir dinámicamente el HTML de las dos secciones que quieres, una debajo de la otra.
+
+Aplicará un estilo especial (CSS) para que todo se vea más compacto, con la "letra más pequeña y fácil de visualizar" que pediste.
+
+Mostrará el bloque de análisis completo y perfectamente formateado justo debajo de la fila del partido.
+
+En Resumen: ¿Qué Logramos con Esto?
+
+Datos Exactos y Completos: Obtienes una copia 1:1 de los módulos de análisis que quieres, con todos sus detalles (AH, O/U, estadísticas de progresión, etc.), porque estamos usando la fuente de datos correcta.
+
+Página Principal Ultrarrápida: La lista de "Próximos Partidos" carga al instante porque no estamos haciendo ningún trabajo pesado por adelantado.
+
+Análisis Profundo Bajo Demanda: El proceso lento de scraping solo se ejecuta cuando TÚ lo pides (con el clic) y solo para el partido que te interesa.
+
+Experiencia de Usuario Transparente: El mensaje de carga gestiona la expectativa del usuario, justificando la breve espera a cambio de un análisis de altísima calidad.

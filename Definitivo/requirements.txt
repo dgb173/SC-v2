@@ -1,0 +1,11 @@
+Flask
+gunicorn
+beautifulsoup4
+lxml
+requests
+urllib3
+pandas
+numpy
+selenium
+playwright
+pytz
